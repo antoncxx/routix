@@ -1,0 +1,16 @@
+networks:
+  internal:
+
+services:
+  timescaledb:
+    image: timescale/timescaledb:2.18.0-pg17
+    container_name: timescaledb
+    ports:
+      - "5432:5432"
+    networks:
+      - internal
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: routix
+    restart: always
