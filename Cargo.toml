@@ -8,7 +8,11 @@ license = "MIT"
 
 [dependencies]
 axum = "0.8"
+env_logger = "0.11"
+jsonwebtoken = { version = "10.3", features = ["rust_crypto"] }
+log = "0.4"
 pingora = "0.8"
+serde = { version = "1.0", features = ["derive"] }
 sqlx = "0.8"
 tokio = "1.50"
 tower-http = "0.6"
