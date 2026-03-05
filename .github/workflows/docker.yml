@@ -34,5 +34,5 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ env.OWNER_LOWER }}/wallguard-server:latest
-            ghcr.io/${{ env.OWNER_LOWER }}/wallguard-server:${{ github.ref_name }}
+            ghcr.io/${{ env.OWNER_LOWER }}/routix:latest
+            ghcr.io/${{ env.OWNER_LOWER }}/routix:${{ github.ref_name }}
