@@ -2,7 +2,6 @@ use std::fmt;
 
 #[derive(Debug)]
 pub enum JwtError {
-    #[cfg(not(debug_assertions))]
     MissingSecret,
     IssueError(jsonwebtoken::errors::Error),
     VerifyError(jsonwebtoken::errors::Error),
@@ -12,7 +11,6 @@ pub enum JwtError {
 impl fmt::Display for JwtError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            #[cfg(not(debug_assertions))]
             Self::MissingSecret => write!(f, "Missing JWT_SECRET environment variable"),
             Self::IssueError(e) => write!(f, "Failed to issue token: {e}"),
             Self::VerifyError(e) => write!(f, "Failed to verify token: {e}"),
@@ -25,7 +23,7 @@ impl std::error::Error for JwtError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::IssueError(e) | Self::VerifyError(e) => Some(e),
-            Self::Expired => None,
+            _ => None,
         }
     }
 }

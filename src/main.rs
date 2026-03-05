@@ -6,6 +6,7 @@ mod jwt;
 
 #[tokio::main]
 async fn main() {
+    dotenvy::dotenv().ok();
     env_logger::init();
 
     let context = match Context::new() {
