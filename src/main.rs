@@ -24,5 +24,5 @@ async fn main() {
         }
     };
 
-    api::run_rest_api(context, api_config).await.unwrap()
+    api::run_rest_api(context, api_config).await.unwrap();
 }

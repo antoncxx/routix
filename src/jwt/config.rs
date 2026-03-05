@@ -31,6 +31,7 @@ impl JwtConfig {
         }
     }
 
+    #[allow(clippy::unnecessary_wraps)]
     fn read_secret() -> Result<String, JwtError> {
         #[cfg(debug_assertions)]
         {

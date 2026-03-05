@@ -22,8 +22,8 @@ impl JwtService {
         let now = current_timestamp();
         let claims = Claims {
             sub: subject.to_owned(),
-            iat: now as usize,
-            exp: (now + self.config.expiry_seconds) as usize,
+            iat: now,
+            exp: (now + self.config.expiry_seconds),
             roles,
         };
         Ok(encode(

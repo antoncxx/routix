@@ -25,7 +25,7 @@ impl std::error::Error for JwtError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::IssueError(e) | Self::VerifyError(e) => Some(e),
-            _ => None,
+            Self::Expired => None,
         }
     }
 }
