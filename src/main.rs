@@ -1,20 +1,28 @@
-use axum::{Router, body::Bytes, routing::post};
+use crate::{api::ApiConfig, context::Context};
 
+mod api;
+mod context;
 mod jwt;
 
 #[tokio::main]
 async fn main() {
     env_logger::init();
 
-    let _service = jwt::JwtService::new(jwt::JwtConfig::from_env().unwrap());
+    let context = match Context::new() {
+        Ok(ctx) => ctx,
+        Err(err) => {
+            log::error!("Failed to initialize application context: {err}");
+            return;
+        }
+    };
 
-    let app = Router::new().route("/echo", post(echo));
+    let api_config = match ApiConfig::from_env() {
+        Ok(config) => config,
+        Err(err) => {
+            log::error!("Failed to read Api Configuration: {err}");
+            return;
+        }
+    };
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    println!("Listening on http://0.0.0.0:3000");
-    axum::serve(listener, app).await.unwrap();
-}
-
-async fn echo(body: Bytes) -> Bytes {
-    body
+    api::run_rest_api(context, api_config).await.unwrap()
 }

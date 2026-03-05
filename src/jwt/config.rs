@@ -13,7 +13,8 @@ const DEFAULT_EXPIRY_SECONDS: u64 = 3600;
 
 impl JwtConfig {
     pub fn from_env() -> Result<Self, JwtError> {
-        let secret = env::var("JWT_SECRET").map_err(|_| JwtError::MissingSecret)?;
+        let secret = Self::read_secret()?;
+
         let expiry_seconds = env::var("JWT_EXPIRY_SECONDS")
             .ok()
             .and_then(|v| v.parse().ok())
@@ -27,6 +28,23 @@ impl JwtConfig {
             encoding_key: EncodingKey::from_secret(secret),
             decoding_key: DecodingKey::from_secret(secret),
             expiry_seconds,
+        }
+    }
+
+    fn read_secret() -> Result<String, JwtError> {
+        #[cfg(debug_assertions)]
+        {
+            const DEFAULT_DEBUG_SECRET: &str = "debug-secret";
+
+            Ok(env::var("JWT_SECRET").unwrap_or_else(|_| {
+                log::warn!("WARNING: using default JWT secret, do not use in production");
+                DEFAULT_DEBUG_SECRET.to_owned()
+            }))
+        }
+
+        #[cfg(not(debug_assertions))]
+        {
+            env::var("JWT_SECRET").map_err(|_| JwtError::MissingSecret)
         }
     }
 }
