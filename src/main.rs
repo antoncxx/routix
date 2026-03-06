@@ -3,7 +3,11 @@ use crate::{api::ApiConfig, context::Context};
 mod api;
 mod context;
 mod database;
+mod init;
 mod jwt;
+mod repos;
+mod roles;
+mod scopes;
 
 #[tokio::main]
 async fn main() {
@@ -25,6 +29,11 @@ async fn main() {
             return;
         }
     };
+
+    if init::initialize(context.clone()).await.is_err() {
+        log::error!("Failed to initiaze the environment");
+        return;
+    }
 
     api::run_rest_api(context, api_config).await.unwrap();
 }

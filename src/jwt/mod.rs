@@ -8,6 +8,8 @@ pub use claims::*;
 pub use config::*;
 pub use error::*;
 
+use crate::{roles::UserRole, scopes::UserScope};
+
 #[derive(Debug)]
 pub struct JwtService {
     config: JwtConfig,
@@ -18,13 +20,19 @@ impl JwtService {
         Self { config }
     }
 
-    pub fn issue(&self, subject: &str, roles: Vec<String>) -> Result<String, JwtError> {
+    pub fn issue(
+        &self,
+        subject: &str,
+        role: UserRole,
+        scopes: Vec<UserScope>,
+    ) -> Result<String, JwtError> {
         let now = current_timestamp();
         let claims = Claims {
             sub: subject.to_owned(),
             iat: now,
             exp: (now + self.config.expiry_seconds),
-            roles,
+            scopes,
+            role,
         };
         Ok(encode(
             &Header::default(),
@@ -62,11 +70,13 @@ mod tests {
     #[test]
     fn test_issue_and_verify() {
         let svc = test_service();
-        let token = svc.issue("user-123", vec!["admin".into()]).unwrap();
+        let token = svc
+            .issue("user-123", UserRole::Admin, vec![UserScope::UsersRead])
+            .unwrap();
         let data = svc.verify(&token).unwrap();
 
         assert_eq!(data.claims.sub, "user-123");
-        assert!(data.claims.roles.contains(&"admin".to_owned()));
+        assert!(data.claims.scopes.contains(&UserScope::UsersRead));
     }
 
     #[test]
@@ -79,7 +89,8 @@ mod tests {
             sub: "user-123".to_owned(),
             iat: 0,
             exp: 1,
-            roles: vec![],
+            scopes: vec![],
+            role: UserRole::User,
         };
 
         let token = encode(&Header::default(), &claims, &svc.config.encoding_key).unwrap();

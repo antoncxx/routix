@@ -19,3 +19,4 @@ diesel = { version = "2.2.0", features = ["postgres", "chrono"] }
 dotenvy = "0.15"
 chrono = "0.4"
 deadpool-diesel = { version = "0.6", features = ["postgres"] }
+bcrypt = "0.19.0"

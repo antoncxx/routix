@@ -1,5 +1,5 @@
-use deadpool_diesel::Runtime;
 use deadpool_diesel::postgres::{Connection, Manager, Pool};
+use deadpool_diesel::{PoolError, Runtime};
 use std::error::Error;
 
 pub mod config;
@@ -12,7 +12,7 @@ pub struct Database {
 
 impl Database {
     pub fn new(config: config::DatabaseConfig) -> Result<Self, Box<dyn Error>> {
-        let manager = Manager::new(&config.database_url, Runtime::Tokio1);
+        let manager = Manager::new(config.database_url, Runtime::Tokio1);
 
         let pool = Pool::builder(manager)
             .max_size(config.max_connections)
@@ -21,7 +21,7 @@ impl Database {
         Ok(Self { pool })
     }
 
-    pub async fn connection(&self) -> Result<Connection, Box<dyn Error>> {
-        Ok(self.pool.get().await?)
+    pub async fn connection(&self) -> Result<Connection, PoolError> {
+        self.pool.get().await
     }
 }
