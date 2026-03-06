@@ -2,6 +2,7 @@ use crate::{api::ApiConfig, context::Context};
 
 mod api;
 mod context;
+mod database;
 mod jwt;
 
 #[tokio::main]

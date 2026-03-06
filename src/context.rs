@@ -1,19 +1,32 @@
 use std::{error::Error, sync::Arc};
 
-use crate::jwt::{JwtConfig, JwtService};
+use crate::{
+    database::{Database, config::DatabaseConfig},
+    jwt::{JwtConfig, JwtService},
+};
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Context {
     pub jwt: Arc<JwtService>,
+    pub database: Arc<Database>,
 }
 
 impl Context {
     pub fn new() -> Result<Self, Box<dyn Error>> {
+        log::debug!("Initializing JWT service");
+
         let jwt = {
             let config = JwtConfig::from_env()?;
             JwtService::new(config).into()
         };
 
-        Ok(Self { jwt })
+        log::debug!("Initializing Database connection");
+
+        let database = {
+            let config = DatabaseConfig::from_env()?;
+            Database::new(config)?.into()
+        };
+
+        Ok(Self { jwt, database })
     }
 }
