@@ -71,12 +71,16 @@ mod tests {
     fn test_issue_and_verify() {
         let svc = test_service();
         let token = svc
-            .issue("user-123", UserRole::Admin, vec![UserScope::UsersRead])
+            .issue(
+                "user-123",
+                UserRole::Admin,
+                vec![UserScope::CertificatesDelete],
+            )
             .unwrap();
         let data = svc.verify(&token).unwrap();
 
         assert_eq!(data.claims.sub, "user-123");
-        assert!(data.claims.scopes.contains(&UserScope::UsersRead));
+        assert!(data.claims.scopes.contains(&UserScope::CertificatesDelete));
     }
 
     #[test]

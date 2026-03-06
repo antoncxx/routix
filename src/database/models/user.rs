@@ -1,7 +1,8 @@
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Queryable, Selectable)]
+#[derive(Debug, Queryable, Selectable, Serialize, Deserialize)]
 #[diesel(table_name = crate::database::schema::users)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct UserModel {
@@ -13,7 +14,7 @@ pub struct UserModel {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Insertable)]
+#[derive(Debug, Insertable, Serialize, Deserialize)]
 #[diesel(table_name = crate::database::schema::users)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct NewUserModel {

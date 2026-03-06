@@ -30,7 +30,7 @@ pub async fn login(
     let Ok(valid) = bcrypt::verify(&body.password, &user.password) else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
-    
+
     if !valid {
         return StatusCode::UNAUTHORIZED.into_response();
     }

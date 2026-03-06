@@ -10,3 +10,13 @@ pub struct Claims {
     pub scopes: Vec<UserScope>,
     pub role: UserRole,
 }
+
+impl Claims {
+    // pub fn has_scope(&self, scope: UserScope) -> bool {
+    //     self.scopes.contains(&scope)
+    // }
+
+    pub fn is_admin(&self) -> bool {
+        matches!(self.role, UserRole::Admin)
+    }
+}

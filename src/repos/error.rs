@@ -44,3 +44,13 @@ impl From<Box<dyn std::error::Error + Send + Sync>> for RepositoryError {
         Self::Other(e)
     }
 }
+
+impl RepositoryError {
+    pub fn is_unique_violation(&self) -> bool {
+        use diesel::result::{DatabaseErrorKind, Error};
+        matches!(
+            self,
+            RepositoryError::Query(Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _,))
+        )
+    }
+}

@@ -5,7 +5,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 
-use crate::context::Context;
+use crate::{context::Context, jwt::Claims};
 
 pub async fn auth_middleware(State(ctx): State<Context>, mut req: Request, next: Next) -> Response {
     let token = req
@@ -22,6 +22,16 @@ pub async fn auth_middleware(State(ctx): State<Context>, mut req: Request, next:
             }
             Err(_) => StatusCode::UNAUTHORIZED.into_response(),
         },
+        None => StatusCode::UNAUTHORIZED.into_response(),
+    }
+}
+
+pub async fn admin_middleware(req: Request, next: Next) -> Response {
+    let claims = req.extensions().get::<Claims>().cloned();
+
+    match claims {
+        Some(claims) if claims.is_admin() => next.run(req).await,
+        Some(_) => StatusCode::FORBIDDEN.into_response(),
         None => StatusCode::UNAUTHORIZED.into_response(),
     }
 }
