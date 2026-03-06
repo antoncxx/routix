@@ -17,7 +17,7 @@ async fn main() {
     let context = match Context::new() {
         Ok(ctx) => ctx,
         Err(err) => {
-            log::error!("Failed to initialize application context: {err}");
+            log::error!("Failed to initialize application context:\n{err}");
             return;
         }
     };
@@ -25,13 +25,13 @@ async fn main() {
     let api_config = match ApiConfig::from_env() {
         Ok(config) => config,
         Err(err) => {
-            log::error!("Failed to read Api Configuration: {err}");
+            log::error!("Failed to read Api Configuration:\n{err}");
             return;
         }
     };
 
-    if init::initialize(context.clone()).await.is_err() {
-        log::error!("Failed to initiaze the environment");
+    if let Err(err) = init::initialize(context.clone()).await {
+        log::error!("Failed to initiaze the environment:\n{err}");
         return;
     }
 

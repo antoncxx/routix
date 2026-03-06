@@ -20,7 +20,7 @@ pub async fn initialize(context: Context) -> Result<(), Box<dyn Error>> {
 
 async fn run_migrations(database: &Database) -> Result<(), Box<dyn Error>> {
     log::debug!("Running migrations");
-    
+
     let conn = database
         .connection()
         .await
