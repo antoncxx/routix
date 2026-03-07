@@ -85,16 +85,3 @@ async fn load_certificates(context: &Context) -> Result<(), Box<dyn Error>> {
 
     Ok(())
 }
-
-// let c = STANDARD
-//     .decode(&cert.certificate)
-//     .map(String::from_utf8)
-//     .unwrap()
-//     .unwrap();
-
-// let k = context
-//     .certificates_manager
-//     .decrypt_certificate_key(&cert.private_key)
-//     .unwrap();
-
-// Certificate::new(&c, &k).unwrap();
