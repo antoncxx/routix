@@ -8,3 +8,14 @@ CREATE TABLE users (
     scopes      TEXT[]       NOT NULL DEFAULT ARRAY[]::TEXT[],
     created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE certificates (
+    id              SERIAL PRIMARY KEY,
+    name            VARCHAR(255) NOT NULL UNIQUE,
+    type            VARCHAR(20)  NOT NULL, -- 'letsencrypt' | 'custom'
+    certificate     TEXT         NOT NULL,
+    private_key     TEXT         NOT NULL,
+    dns_provider    VARCHAR(50),           -- for DNS-01 challenges
+    expires_at      TIMESTAMPTZ,
+    created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);

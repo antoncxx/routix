@@ -8,6 +8,7 @@ mod jwt;
 mod repos;
 mod roles;
 mod scopes;
+mod tls;
 
 #[tokio::main]
 async fn main() {

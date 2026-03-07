@@ -2,26 +2,29 @@ use std::error::Error;
 
 use crate::{
     context::Context,
-    database::{Database, models::NewUserModel},
-    repos::{RepositoryError, UsersRepository},
+    database::models::NewUserModel,
+    repos::{CertificatesRepository, RepositoryError, UsersRepository},
     roles::UserRole,
+    tls::Certificate,
 };
-
+use base64::{Engine, engine::general_purpose::STANDARD};
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
 
 pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("migrations");
 
 pub async fn initialize(context: Context) -> Result<(), Box<dyn Error>> {
-    run_migrations(&context.database).await?;
-    ensure_admin_exists(&context.database).await?;
+    run_migrations(&context).await?;
+    ensure_admin_exists(&context).await?;
+    load_certificates(&context).await?;
 
     Ok(())
 }
 
-async fn run_migrations(database: &Database) -> Result<(), Box<dyn Error>> {
+async fn run_migrations(context: &Context) -> Result<(), Box<dyn Error>> {
     log::debug!("Running migrations");
 
-    let conn = database
+    let conn = context
+        .database
         .connection()
         .await
         .map_err(RepositoryError::Connection)?;
@@ -34,8 +37,8 @@ async fn run_migrations(database: &Database) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-async fn ensure_admin_exists(database: &Database) -> Result<(), Box<dyn Error>> {
-    let existing = UsersRepository::find_by_username("admin", database).await?;
+async fn ensure_admin_exists(context: &Context) -> Result<(), Box<dyn Error>> {
+    let existing = UsersRepository::find_by_username("admin", &context.database).await?;
 
     if existing.is_some() {
         log::debug!("Admin user already exists, skipping creation");
@@ -54,9 +57,44 @@ async fn ensure_admin_exists(database: &Database) -> Result<(), Box<dyn Error>> 
         scopes: vec![],
     };
 
-    UsersRepository::create(model, database).await?;
+    UsersRepository::create(model, &context.database).await?;
 
     log::info!("Default admin user created successfully");
 
     Ok(())
 }
+
+async fn load_certificates(context: &Context) -> Result<(), Box<dyn Error>> {
+    log::debug!("Loading certificates");
+
+    let certs = CertificatesRepository::get_all(&context.database).await?;
+
+    for cert in certs {
+        if let Ok(Ok(cert_pem)) = STANDARD.decode(&cert.certificate).map(String::from_utf8)
+            && let Ok(key_pem) = context
+                .certificates_manager
+                .decrypt_certificate_key(&cert.private_key)
+            && let Ok(certificate) = Certificate::new(&cert_pem, &key_pem)
+        {
+            log::debug!("Loaded certificate {}", cert.name);
+            let _ = certificate;
+        } else {
+            log::warn!("Failed to load {} certificate, ignoring ...", cert.name);
+        }
+    }
+
+    Ok(())
+}
+
+// let c = STANDARD
+//     .decode(&cert.certificate)
+//     .map(String::from_utf8)
+//     .unwrap()
+//     .unwrap();
+
+// let k = context
+//     .certificates_manager
+//     .decrypt_certificate_key(&cert.private_key)
+//     .unwrap();
+
+// Certificate::new(&c, &k).unwrap();

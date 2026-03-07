@@ -12,9 +12,9 @@ pub struct Claims {
 }
 
 impl Claims {
-    // pub fn has_scope(&self, scope: UserScope) -> bool {
-    //     self.scopes.contains(&scope)
-    // }
+    pub fn has_scope(&self, scope: UserScope) -> bool {
+        self.scopes.contains(&scope)
+    }
 
     pub fn is_admin(&self) -> bool {
         matches!(self.role, UserRole::Admin)

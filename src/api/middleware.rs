@@ -5,7 +5,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 
-use crate::{context::Context, jwt::Claims};
+use crate::{context::Context, jwt::Claims, scopes::UserScope};
 
 pub async fn auth_middleware(State(ctx): State<Context>, mut req: Request, next: Next) -> Response {
     let token = req
@@ -31,6 +31,20 @@ pub async fn admin_middleware(req: Request, next: Next) -> Response {
 
     match claims {
         Some(claims) if claims.is_admin() => next.run(req).await,
+        Some(_) => StatusCode::FORBIDDEN.into_response(),
+        None => StatusCode::UNAUTHORIZED.into_response(),
+    }
+}
+
+pub async fn scoped_middleware(
+    State(scope): State<UserScope>,
+    req: Request,
+    next: Next,
+) -> Response {
+    let claims = req.extensions().get::<Claims>();
+
+    match claims {
+        Some(claims) if claims.is_admin() || claims.has_scope(scope) => next.run(req).await,
         Some(_) => StatusCode::FORBIDDEN.into_response(),
         None => StatusCode::UNAUTHORIZED.into_response(),
     }

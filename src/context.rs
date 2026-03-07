@@ -3,12 +3,14 @@ use std::{error::Error, sync::Arc};
 use crate::{
     database::{Database, config::DatabaseConfig},
     jwt::{JwtConfig, JwtService},
+    tls::{CertificatesManager, PKeyEncryptionConfig},
 };
 
 #[derive(Clone)]
 pub struct Context {
     pub jwt: Arc<JwtService>,
     pub database: Arc<Database>,
+    pub certificates_manager: Arc<CertificatesManager>,
 }
 
 impl Context {
@@ -27,6 +29,17 @@ impl Context {
             Database::new(config)?.into()
         };
 
-        Ok(Self { jwt, database })
+        log::debug!("Creating certificates manager");
+
+        let certificates_manager = {
+            let config = PKeyEncryptionConfig::from_env()?;
+            CertificatesManager::new(config).into()
+        };
+
+        Ok(Self {
+            jwt,
+            database,
+            certificates_manager,
+        })
     }
 }
