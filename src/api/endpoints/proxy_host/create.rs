@@ -50,6 +50,7 @@ pub async fn create(
             StatusCode::CREATED.into_response()
         }
         Err(e) if e.is_unique_violation() => StatusCode::CONFLICT.into_response(),
+        Err(e) if e.is_foreign_key_violation() => StatusCode::BAD_REQUEST.into_response(),
         Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
     }
 }

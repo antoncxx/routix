@@ -53,4 +53,15 @@ impl RepositoryError {
             RepositoryError::Query(Error::DatabaseError(DatabaseErrorKind::UniqueViolation, _,))
         )
     }
+
+    pub fn is_foreign_key_violation(&self) -> bool {
+        use diesel::result::{DatabaseErrorKind, Error};
+        matches!(
+            self,
+            RepositoryError::Query(Error::DatabaseError(
+                DatabaseErrorKind::ForeignKeyViolation,
+                _,
+            ))
+        )
+    }
 }
