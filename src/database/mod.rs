@@ -5,6 +5,7 @@ use std::error::Error;
 pub mod config;
 pub mod models;
 pub mod schema;
+pub mod repos;
 
 pub struct Database {
     pool: Pool,

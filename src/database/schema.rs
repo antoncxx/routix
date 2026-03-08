@@ -18,6 +18,20 @@ diesel::table! {
 }
 
 diesel::table! {
+    proxy_hosts (id) {
+        id -> Int4,
+        #[max_length = 255]
+        domain -> Varchar,
+        #[max_length = 255]
+        forward_host -> Varchar,
+        forward_port -> Int4,
+        #[max_length = 255]
+        certificate_name -> Nullable<Varchar>,
+        created_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
     users (id) {
         id -> Int4,
         #[max_length = 100]
@@ -31,4 +45,4 @@ diesel::table! {
     }
 }
 
-diesel::allow_tables_to_appear_in_same_query!(certificates, users,);
+diesel::allow_tables_to_appear_in_same_query!(certificates, proxy_hosts, users,);

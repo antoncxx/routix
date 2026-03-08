@@ -1,20 +1,13 @@
-use crate::{
-    database::{
-        Database,
-        models::{NewUserModel, UserModel},
-    },
+use crate::database::{
+    Database,
+    models::{NewProxyHostModel, ProxyHostModel},
     repos::RepositoryError,
 };
 
-pub struct UsersRepository;
+pub struct ProxyHostsRepository;
 
-impl UsersRepository {
-    pub async fn find_by_username(
-        username: &str,
-        database: &Database,
-    ) -> Result<Option<UserModel>, RepositoryError> {
-        let uname = username.to_owned();
-
+impl ProxyHostsRepository {
+    pub async fn get_all(database: &Database) -> Result<Vec<ProxyHostModel>, RepositoryError> {
         let connection = database
             .connection()
             .await
@@ -22,12 +15,9 @@ impl UsersRepository {
 
         connection
             .interact(move |conn| {
-                use crate::database::schema::users::dsl::{username, users};
+                use crate::database::schema::proxy_hosts::dsl::proxy_hosts;
                 use diesel::prelude::*;
-                users
-                    .filter(username.eq(&uname))
-                    .first::<UserModel>(conn)
-                    .optional()
+                proxy_hosts.load::<ProxyHostModel>(conn)
             })
             .await
             .map_err(RepositoryError::Interact)?
@@ -35,9 +25,9 @@ impl UsersRepository {
     }
 
     pub async fn create(
-        model: NewUserModel,
+        model: NewProxyHostModel,
         database: &Database,
-    ) -> Result<UserModel, RepositoryError> {
+    ) -> Result<ProxyHostModel, RepositoryError> {
         let connection = database
             .connection()
             .await
@@ -45,11 +35,11 @@ impl UsersRepository {
 
         connection
             .interact(move |conn| {
-                use crate::database::schema::users::dsl::users;
+                use crate::database::schema::proxy_hosts::dsl::proxy_hosts;
                 use diesel::prelude::*;
-                diesel::insert_into(users)
+                diesel::insert_into(proxy_hosts)
                     .values(&model)
-                    .get_result::<UserModel>(conn)
+                    .get_result::<ProxyHostModel>(conn)
             })
             .await
             .map_err(RepositoryError::Interact)?

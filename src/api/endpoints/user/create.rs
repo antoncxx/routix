@@ -6,7 +6,7 @@ use serde::Deserialize;
 
 use crate::context::Context;
 use crate::database::models::NewUserModel;
-use crate::repos::UsersRepository;
+use crate::database::repos::UsersRepository;
 use crate::roles::UserRole;
 use crate::scopes::UserScope;
 

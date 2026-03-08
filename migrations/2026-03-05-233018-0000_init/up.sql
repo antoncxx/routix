@@ -19,3 +19,12 @@ CREATE TABLE certificates (
     expires_at      TIMESTAMPTZ,
     created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE proxy_hosts (
+    id                  SERIAL PRIMARY KEY,
+    domain              VARCHAR(255)    NOT NULL UNIQUE,
+    forward_host        VARCHAR(255)    NOT NULL,  -- IP or hostname
+    forward_port        INTEGER         NOT NULL CHECK (forward_port BETWEEN 1 AND 65535),
+    certificate_name    VARCHAR(255)    REFERENCES certificates(name),
+    created_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW()
+);

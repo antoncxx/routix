@@ -1,8 +1,6 @@
-use crate::{
-    database::{
-        Database,
-        models::{CertificateModel, NewCertificateModel},
-    },
+use crate::database::{
+    Database,
+    models::{CertificateModel, NewCertificateModel},
     repos::RepositoryError,
 };
 
@@ -17,7 +15,7 @@ impl CertificatesRepository {
 
         connection
             .interact(move |conn| {
-                use crate::database::schema::certificates::dsl::*;
+                use crate::database::schema::certificates::dsl::certificates;
                 use diesel::prelude::*;
                 certificates.load::<CertificateModel>(conn)
             })
@@ -37,7 +35,7 @@ impl CertificatesRepository {
 
         connection
             .interact(move |conn| {
-                use crate::database::schema::certificates::dsl::*;
+                use crate::database::schema::certificates::dsl::certificates;
                 use diesel::prelude::*;
                 diesel::insert_into(certificates)
                     .values(&model)

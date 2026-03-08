@@ -2,8 +2,10 @@ use std::error::Error;
 
 use crate::{
     context::Context,
-    database::models::NewUserModel,
-    repos::{CertificatesRepository, RepositoryError, UsersRepository},
+    database::{
+        models::NewUserModel,
+        repos::{CertificatesRepository, ProxyHostsRepository, RepositoryError, UsersRepository},
+    },
     roles::UserRole,
     tls::Certificate,
 };
@@ -16,6 +18,7 @@ pub async fn initialize(context: Context) -> Result<(), Box<dyn Error>> {
     run_migrations(&context).await?;
     ensure_admin_exists(&context).await?;
     load_certificates(&context).await?;
+    load_proxy_hosts(&context).await?;
 
     Ok(())
 }
@@ -77,10 +80,26 @@ async fn load_certificates(context: &Context) -> Result<(), Box<dyn Error>> {
             && let Ok(certificate) = Certificate::new(&cert_pem, &key_pem)
         {
             log::debug!("Loaded certificate {}", cert.name);
-            let _ = certificate;
+
+            let _ = context
+                .certificates_manager
+                .add(&cert.name, certificate)
+                .await;
         } else {
             log::warn!("Failed to load {} certificate, ignoring ...", cert.name);
         }
+    }
+
+    Ok(())
+}
+
+async fn load_proxy_hosts(context: &Context) -> Result<(), Box<dyn Error>> {
+    log::debug!("Loading proxy hosts");
+
+    let proxy_hosts = ProxyHostsRepository::get_all(&context.database).await?;
+
+    for proxy_host in proxy_hosts {
+        let _ = proxy_host;
     }
 
     Ok(())

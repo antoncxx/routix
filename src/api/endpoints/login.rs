@@ -1,4 +1,6 @@
-use crate::{context::Context, repos::UsersRepository, roles::UserRole, scopes::UserScope};
+use crate::{
+    context::Context, database::repos::UsersRepository, roles::UserRole, scopes::UserScope,
+};
 use axum::Json;
 use axum::extract::State;
 use axum::http::StatusCode;

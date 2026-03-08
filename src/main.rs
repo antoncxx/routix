@@ -5,7 +5,6 @@ mod context;
 mod database;
 mod init;
 mod jwt;
-mod repos;
 mod roles;
 mod scopes;
 mod tls;
