@@ -2,7 +2,10 @@ use axum::Json;
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
+use regex::Regex;
 use serde::Deserialize;
+use std::sync::LazyLock;
+use validator::Validate;
 
 use crate::context::Context;
 use crate::database::models::NewUserModel;
@@ -10,9 +13,13 @@ use crate::database::repos::UsersRepository;
 use crate::roles::UserRole;
 use crate::scopes::UserScope;
 
-#[derive(Deserialize)]
+static USERNAME_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"^[a-zA-Z0-9_-]+$").unwrap());
+
+#[derive(Deserialize, Validate)]
 pub struct CreateUserRequestBody {
+    #[validate(length(min = 3, max = 100), regex(path = *USERNAME_REGEX))]
     username: String,
+    #[validate(length(min = 8, max = 255))]
     password: String,
     role: UserRole,
     scopes: Vec<UserScope>,

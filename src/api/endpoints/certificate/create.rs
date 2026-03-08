@@ -1,19 +1,31 @@
-use crate::context::Context;
-use crate::database::models::NewCertificateModel;
-use crate::database::repos::CertificatesRepository;
-use crate::tls::Certificate;
 use axum::Json;
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use base64::{Engine, engine::general_purpose::STANDARD};
+use regex::Regex;
 use serde::Deserialize;
+use std::sync::LazyLock;
+use validator::Validate;
 
-#[derive(Deserialize)]
+use crate::context::Context;
+use crate::database::models::NewCertificateModel;
+use crate::database::repos::CertificatesRepository;
+use crate::tls::Certificate;
+
+static CERT_NAME_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^[a-zA-Z0-9_.-]+$").unwrap());
+
+#[derive(Deserialize, Validate)]
 pub struct CreateCertificateRequestBody {
-    certificate: String,
-    pem_key: String,
+    #[validate(length(min = 1), regex(path = *CERT_NAME_REGEX))]
     name: String,
+
+    #[validate(length(min = 1))]
+    certificate: String,
+
+    #[validate(length(min = 1))]
+    pem_key: String,
 }
 
 pub async fn create(

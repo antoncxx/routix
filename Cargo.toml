@@ -25,3 +25,5 @@ pingora-openssl = "0.8"
 openssl = "0.10.75"
 aes-gcm = "0.10.3"
 base64 = "0.22.1"
+validator = { version = "0.20", features = ["derive"] }
+regex = "1"

@@ -4,8 +4,8 @@ use std::error::Error;
 
 pub mod config;
 pub mod models;
-pub mod schema;
 pub mod repos;
+pub mod schema;
 
 pub struct Database {
     pool: Pool,

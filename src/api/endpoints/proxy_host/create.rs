@@ -1,15 +1,30 @@
-use crate::database::models::NewProxyHostModel;
-use crate::{context::Context, database::repos::ProxyHostsRepository};
 use axum::Json;
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
+use regex::Regex;
 use serde::Deserialize;
+use std::sync::LazyLock;
+use validator::Validate;
 
-#[derive(Deserialize)]
+use crate::database::models::NewProxyHostModel;
+use crate::{context::Context, database::repos::ProxyHostsRepository};
+
+static DOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$").unwrap()
+});
+
+static HOST_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9-]+$").unwrap()
+});
+
+#[derive(Deserialize, Validate)]
 pub struct CreateProxyHostRequest {
+    #[validate(length(min = 1, max = 255), regex(path = *DOMAIN_REGEX))]
     domain: String,
+    #[validate(length(min = 1, max = 255), regex(path = *HOST_REGEX))]
     forward_host: String,
+    #[validate(range(min = 1, max = 65535))]
     forward_port: i32,
     certificate_name: Option<String>,
 }
