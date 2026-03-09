@@ -29,6 +29,10 @@ pub async fn create(
     State(ctx): State<Context>,
     Json(body): Json<CreateUserRequestBody>,
 ) -> impl IntoResponse {
+    if body.validate().is_err() {
+        return StatusCode::UNPROCESSABLE_ENTITY.into_response();
+    }
+
     let Ok(hashed) = bcrypt::hash(&body.password, bcrypt::DEFAULT_COST) else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };

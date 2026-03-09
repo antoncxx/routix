@@ -44,6 +44,10 @@ pub async fn create(
     State(ctx): State<Context>,
     Json(body): Json<CreateProxyHostRequest>,
 ) -> impl IntoResponse {
+    if body.validate().is_err() {
+        return StatusCode::UNPROCESSABLE_ENTITY.into_response();
+    }
+
     match ProxyHostsRepository::create(body.into(), &ctx.database).await {
         Ok(_) => {
             // TODO: Add host to proxy's context

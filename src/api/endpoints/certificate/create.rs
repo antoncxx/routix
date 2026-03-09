@@ -32,6 +32,10 @@ pub async fn create(
     State(ctx): State<Context>,
     Json(body): Json<CreateCertificateRequestBody>,
 ) -> impl IntoResponse {
+    if body.validate().is_err() {
+        return StatusCode::UNPROCESSABLE_ENTITY.into_response();
+    }
+
     let (cert_pem, key_pem) = match (
         STANDARD.decode(&body.certificate).map(String::from_utf8),
         STANDARD.decode(&body.pem_key).map(String::from_utf8),
