@@ -30,10 +30,11 @@ impl ProxyHttp for RoutixProxy {
             .headers
             .get("host")
             .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.split(':').next())
             .unwrap_or("");
 
         let Some(proxy_host) = self.context.hosts_manager.get(hostname).await else {
-            return Err(Error::new(ErrorType::HTTPStatus(404)));
+            return Err(Error::new(ErrorType::HTTPStatus(502)));
         };
 
         let upstream = proxy_host.upstream();
