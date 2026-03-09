@@ -6,6 +6,7 @@ use crate::{
         models::NewUserModel,
         repos::{CertificatesRepository, ProxyHostsRepository, RepositoryError, UsersRepository},
     },
+    proxy::ProxyHost,
     roles::UserRole,
     tls::Certificate,
 };
@@ -98,8 +99,13 @@ async fn load_proxy_hosts(context: &Context) -> Result<(), Box<dyn Error>> {
 
     let proxy_hosts = ProxyHostsRepository::get_all(&context.database).await?;
 
-    for proxy_host in proxy_hosts {
-        let _ = proxy_host;
+    for proxy_host_model in proxy_hosts {
+        let proxy_domain = proxy_host_model.domain.clone();
+        if let Ok(proxy_host) = ProxyHost::try_from(proxy_host_model) {
+            let () = context.hosts_manager.add(proxy_host).await;
+        } else {
+            log::warn!("Failed to load proxy host {proxy_domain}");
+        }
     }
 
     Ok(())

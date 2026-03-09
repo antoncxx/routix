@@ -27,7 +27,7 @@ impl Encryptor {
         combined.extend(
             self.cipher
                 .encrypt(nonce, plaintext.as_bytes())
-                .map_err(|e| format!("Encryptor::encrypt failed: {}", e))?,
+                .map_err(|e| format!("Encryptor::encrypt failed: {e}"))?,
         );
 
         Ok(STANDARD.encode(combined))
@@ -36,7 +36,7 @@ impl Encryptor {
     pub fn decrypt(&self, encoded: &str) -> Result<String, String> {
         let combined = STANDARD
             .decode(encoded)
-            .map_err(|e| format!("Encryptor::decrypt: invalid base64: {}", e))?;
+            .map_err(|e| format!("Encryptor::decrypt: invalid base64: {e}"))?;
 
         if combined.len() < 12 {
             return Err("Encryptor::decrypt: data too short to contain nonce".into());
@@ -48,9 +48,8 @@ impl Encryptor {
         let plaintext = self
             .cipher
             .decrypt(nonce, ciphertext)
-            .map_err(|e| format!("Encryptor::decrypt: authentication failed: {}", e))?;
+            .map_err(|e| format!("Encryptor::decrypt: authentication failed: {e}"))?;
 
-        String::from_utf8(plaintext)
-            .map_err(|e| format!("Encryptor::decrypt: invalid utf8: {}", e).into())
+        String::from_utf8(plaintext).map_err(|e| format!("Encryptor::decrypt: invalid utf8: {e}"))
     }
 }

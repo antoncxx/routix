@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 pub struct ProxyHostModel {
     pub id: i32,
     pub domain: String,
+    pub forward_schema: String,
     pub forward_host: String,
     pub forward_port: i32,
     pub certificate_name: Option<String>,
@@ -19,6 +20,7 @@ pub struct ProxyHostModel {
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct NewProxyHostModel {
     pub domain: String,
+    pub forward_schema: String,
     pub forward_host: String,
     pub forward_port: i32,
     pub certificate_name: Option<String>,

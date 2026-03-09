@@ -5,6 +5,7 @@ mod context;
 mod database;
 mod init;
 mod jwt;
+mod proxy;
 mod roles;
 mod scopes;
 mod tls;
@@ -35,5 +36,12 @@ async fn main() {
         return;
     }
 
-    api::run_rest_api(context, api_config).await.unwrap();
+    tokio::select! {
+        err = api::run_rest_api(context.clone(), api_config) => {
+            log::error!("REST API stopped unexpectedly: {err:?}");
+        }
+        err = proxy::run_proxy(context) => {
+            log::error!("Proxy stopped unexpectedly: {err:?}");
+        }
+    }
 }

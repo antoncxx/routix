@@ -1,17 +1,14 @@
-use std::sync::Arc;
-
 use chrono::{DateTime, Utc};
 use openssl::asn1::Asn1Time;
 use pingora_openssl::error::ErrorStack;
 use pingora_openssl::pkey::{PKey, Private};
-use pingora_openssl::ssl::{SslContext, SslContextBuilder, SslMethod};
+use pingora_openssl::ssl::{SslContextBuilder, SslMethod};
 use pingora_openssl::x509::X509;
 
 #[derive(Debug)]
 pub struct Certificate {
-    certificate: X509,
-    private_key: PKey<Private>,
-    ssl_context: Arc<SslContext>,
+    pub certificate: X509,
+    pub private_key: PKey<Private>,
 }
 
 impl Certificate {
@@ -27,7 +24,6 @@ impl Certificate {
         Ok(Self {
             certificate,
             private_key,
-            ssl_context: builder.build().into(),
         })
     }
 
@@ -36,36 +32,9 @@ impl Certificate {
         let epoch = Asn1Time::from_unix(0)?;
         let diff = epoch.diff(not_after)?;
 
-        let secs = diff.days as i64 * 86_400 + diff.secs as i64;
+        let secs = i64::from(diff.days) * 86_400 + i64::from(diff.secs);
 
         Ok(DateTime::from_timestamp(secs, 0).unwrap_or_default())
-    }
-
-    pub fn get_context(&self) -> Arc<SslContext> {
-        self.ssl_context.clone()
-    }
-
-    pub fn hostnames(&self) -> Vec<String> {
-        let mut hostnames = Vec::new();
-
-        if let Some(san) = self.certificate.subject_alt_names() {
-            for name in san.iter() {
-                if let Some(dns) = name.dnsname() {
-                    hostnames.push(dns.to_string());
-                }
-            }
-        }
-
-        if hostnames.is_empty() {
-            let subject = self.certificate.subject_name();
-            for entry in subject.entries_by_nid(pingora_openssl::nid::Nid::COMMONNAME) {
-                if let Ok(cn) = entry.data().as_utf8() {
-                    hostnames.push(cn.to_string());
-                }
-            }
-        }
-
-        hostnames
     }
 }
 
@@ -77,7 +46,6 @@ mod tests {
     use openssl::hash::MessageDigest;
     use openssl::pkey::PKey;
     use openssl::rsa::Rsa;
-    use openssl::x509::extension::SubjectAlternativeName;
     use openssl::x509::{X509Builder, X509NameBuilder};
 
     fn generate_test_cert(days_valid: u32, days_offset: i64) -> (String, String) {
@@ -101,44 +69,6 @@ mod tests {
         builder.sign(&key, MessageDigest::sha256()).unwrap();
 
         let cert = builder.build();
-        let cert_pem = String::from_utf8(cert.to_pem().unwrap()).unwrap();
-        let key_pem = String::from_utf8(key.private_key_to_pem_pkcs8().unwrap()).unwrap();
-
-        (cert_pem, key_pem)
-    }
-
-    fn generate_cert_with_san(cn: &str, sans: &[&str]) -> (String, String) {
-        let rsa = Rsa::generate(2048).unwrap();
-        let key = PKey::from_rsa(rsa).unwrap();
-
-        let mut name = X509NameBuilder::new().unwrap();
-        name.append_entry_by_text("CN", cn).unwrap();
-        let name = name.build();
-
-        let mut builder = X509Builder::new().unwrap();
-        builder.set_subject_name(&name).unwrap();
-        builder.set_issuer_name(&name).unwrap();
-        builder.set_pubkey(&key).unwrap();
-        builder
-            .set_not_before(&Asn1Time::days_from_now(0).unwrap())
-            .unwrap();
-        builder
-            .set_not_after(&Asn1Time::days_from_now(365).unwrap())
-            .unwrap();
-
-        if !sans.is_empty() {
-            let context = builder.x509v3_context(None, None);
-            let mut san_ext = SubjectAlternativeName::new();
-            for san in sans {
-                san_ext.dns(san);
-            }
-            let ext = san_ext.build(&context).unwrap();
-            builder.append_extension(ext).unwrap();
-        }
-
-        builder.sign(&key, MessageDigest::sha256()).unwrap();
-        let cert = builder.build();
-
         let cert_pem = String::from_utf8(cert.to_pem().unwrap()).unwrap();
         let key_pem = String::from_utf8(key.private_key_to_pem_pkcs8().unwrap()).unwrap();
 
@@ -203,57 +133,5 @@ mod tests {
             days_until_expiry == 0 || days_until_expiry == 1,
             "Short-lived cert should expire in ~1 day"
         );
-    }
-
-    #[test]
-    fn test_hostnames_single_san() {
-        let (cert_pem, key_pem) = generate_cert_with_san("example.com", &["example.com"]);
-        let cert = Certificate::new(&cert_pem, &key_pem).unwrap();
-
-        assert_eq!(cert.hostnames(), vec!["example.com"]);
-    }
-
-    #[test]
-    fn test_hostnames_multiple_sans() {
-        let (cert_pem, key_pem) = generate_cert_with_san(
-            "example.com",
-            &["example.com", "www.example.com", "api.example.com"],
-        );
-        let cert = Certificate::new(&cert_pem, &key_pem).unwrap();
-        let hostnames = cert.hostnames();
-
-        assert_eq!(hostnames.len(), 3);
-        assert!(hostnames.contains(&"example.com".to_string()));
-        assert!(hostnames.contains(&"www.example.com".to_string()));
-        assert!(hostnames.contains(&"api.example.com".to_string()));
-    }
-
-    #[test]
-    fn test_hostnames_wildcard_san() {
-        let (cert_pem, key_pem) =
-            generate_cert_with_san("example.com", &["*.example.com", "example.com"]);
-        let cert = Certificate::new(&cert_pem, &key_pem).unwrap();
-        let hostnames = cert.hostnames();
-
-        assert!(hostnames.contains(&"*.example.com".to_string()));
-        assert!(hostnames.contains(&"example.com".to_string()));
-    }
-
-    #[test]
-    fn test_hostnames_fallback_to_cn() {
-        let (cert_pem, key_pem) = generate_cert_with_san("example.com", &[]);
-        let cert = Certificate::new(&cert_pem, &key_pem).unwrap();
-
-        assert_eq!(cert.hostnames(), vec!["example.com"]);
-    }
-
-    #[test]
-    fn test_hostnames_san_takes_priority_over_cn() {
-        let (cert_pem, key_pem) = generate_cert_with_san("example.com", &["www.example.com"]);
-        let cert = Certificate::new(&cert_pem, &key_pem).unwrap();
-        let hostnames = cert.hostnames();
-
-        assert_eq!(hostnames, vec!["www.example.com"]);
-        assert!(!hostnames.contains(&"example.com".to_string()));
     }
 }

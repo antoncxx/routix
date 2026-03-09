@@ -3,6 +3,7 @@ use std::{error::Error, sync::Arc};
 use crate::{
     database::{Database, config::DatabaseConfig},
     jwt::{JwtConfig, JwtService},
+    proxy::HostsManager,
     tls::{CertificatesManager, PKeyEncryptionConfig},
 };
 
@@ -11,6 +12,7 @@ pub struct Context {
     pub jwt: Arc<JwtService>,
     pub database: Arc<Database>,
     pub certificates_manager: Arc<CertificatesManager>,
+    pub hosts_manager: Arc<HostsManager>,
 }
 
 impl Context {
@@ -33,13 +35,17 @@ impl Context {
 
         let certificates_manager = {
             let config = PKeyEncryptionConfig::from_env()?;
-            CertificatesManager::new(config).into()
+            CertificatesManager::new(&config).into()
         };
+
+        log::debug!("Creating hosts manager");
+        let hosts_manager = Arc::new(HostsManager::new());
 
         Ok(Self {
             jwt,
             database,
             certificates_manager,
+            hosts_manager,
         })
     }
 }

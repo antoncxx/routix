@@ -36,12 +36,11 @@ pub async fn create(
         return StatusCode::UNPROCESSABLE_ENTITY.into_response();
     }
 
-    let (cert_pem, key_pem) = match (
+    let (Ok(Ok(cert_pem)), Ok(Ok(key_pem))) = (
         STANDARD.decode(&body.certificate).map(String::from_utf8),
         STANDARD.decode(&body.pem_key).map(String::from_utf8),
-    ) {
-        (Ok(Ok(cert)), Ok(Ok(key))) => (cert, key),
-        _ => return StatusCode::BAD_REQUEST.into_response(),
+    ) else {
+        return StatusCode::BAD_REQUEST.into_response();
     };
 
     let Ok(certificate) = Certificate::new(&cert_pem, &key_pem) else {

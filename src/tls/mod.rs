@@ -15,10 +15,10 @@ pub struct CertificatesManager {
 }
 
 impl CertificatesManager {
-    pub fn new(config: PKeyEncryptionConfig) -> Self {
+    pub fn new(config: &PKeyEncryptionConfig) -> Self {
         let encryptor = Encryptor::new(&config.key);
-        let certs = Default::default();
-        Self { encryptor, certs }
+        let certs = RwLock::default();
+        Self { certs, encryptor }
     }
 
     pub fn encrypt_certificate_key(&self, cert_key: &str) -> Result<String, String> {
@@ -41,9 +41,9 @@ impl CertificatesManager {
         true
     }
 
-    pub async fn remove(&self, name: &str) -> bool {
-        self.certs.write().await.remove(name).is_some()
-    }
+    // pub async fn remove(&self, name: &str) -> bool {
+    //     self.certs.write().await.remove(name).is_some()
+    // }
 
     pub async fn get(&self, name: &str) -> Option<Arc<Certificate>> {
         self.certs.read().await.get(name).cloned()

@@ -11,7 +11,7 @@ axum = "0.8"
 env_logger = "0.11"
 jsonwebtoken = { version = "10.3", features = ["rust_crypto"] }
 log = "0.4"
-pingora = "0.8"
+pingora = {version = "0.8", features = ["proxy", "openssl"] }
 serde = { version = "1.0", features = ["derive"] }
 tokio = "1.50"
 tower-http = "0.6"
@@ -27,3 +27,4 @@ aes-gcm = "0.10.3"
 base64 = "0.22.1"
 validator = { version = "0.20", features = ["derive"] }
 regex = "1"
+async-trait = "0.1.89"

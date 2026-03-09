@@ -22,6 +22,8 @@ diesel::table! {
         id -> Int4,
         #[max_length = 255]
         domain -> Varchar,
+        #[max_length = 5]
+        forward_schema -> Varchar,
         #[max_length = 255]
         forward_host -> Varchar,
         forward_port -> Int4,

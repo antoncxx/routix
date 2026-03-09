@@ -23,6 +23,7 @@ CREATE TABLE certificates (
 CREATE TABLE proxy_hosts (
     id                  SERIAL PRIMARY KEY,
     domain              VARCHAR(255)    NOT NULL UNIQUE,
+    forward_schema      VARCHAR(5)      NOT NULL DEFAULT 'http' CHECK (forward_schema IN ('http', 'https')),
     forward_host        VARCHAR(255)    NOT NULL,  -- IP or hostname
     forward_port        INTEGER         NOT NULL CHECK (forward_port BETWEEN 1 AND 65535),
     certificate_name    VARCHAR(255)    REFERENCES certificates(name),
