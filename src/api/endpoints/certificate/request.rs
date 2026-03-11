@@ -66,7 +66,7 @@ async fn handle_request(
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    let model = build_certificate_model(&ctx, &body.domain, &certificate)
+    let model = build_certificate_model(&ctx, &body.domain, &certificate, &body.dns_provider)
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     match CertificatesRepository::create(model, &ctx.database).await {
@@ -86,6 +86,7 @@ fn build_certificate_model(
     ctx: &Context,
     domain: &str,
     certificate: &crate::tls::Certificate,
+    dns_provider: &str,
 ) -> anyhow::Result<NewCertificateModel> {
     let pem_bytes = certificate.private_key.private_key_to_pem_pkcs8()?;
     let pem_string = String::from_utf8(pem_bytes)?;
@@ -102,6 +103,7 @@ fn build_certificate_model(
         name: domain.to_string(),
         certificate: certificate_pem_base64,
         expires_at: certificate.expires_at().ok(),
-        ..Default::default()
+        dns_provider: Some(dns_provider.to_owned()),
+        type_: "letsencrypt".to_owned(),
     })
 }

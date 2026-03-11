@@ -56,7 +56,8 @@ pub async fn upload(
         name: body.name.clone(),
         certificate: body.certificate,
         expires_at: certificate.expires_at().ok(),
-        ..Default::default()
+        type_: "custom".to_owned(),
+        dns_provider: None,
     };
 
     match CertificatesRepository::create(model, &ctx.database).await {
