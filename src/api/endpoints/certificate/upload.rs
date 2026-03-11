@@ -17,7 +17,7 @@ static CERT_NAME_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^[a-zA-Z0-9_.-]+$").unwrap());
 
 #[derive(Deserialize, Validate)]
-pub struct CreateCertificateRequestBody {
+pub struct UploadCertificateRequestBody {
     #[validate(length(min = 1), regex(path = *CERT_NAME_REGEX))]
     name: String,
 
@@ -28,9 +28,9 @@ pub struct CreateCertificateRequestBody {
     pem_key: String,
 }
 
-pub async fn create(
+pub async fn upload(
     State(ctx): State<Context>,
-    Json(body): Json<CreateCertificateRequestBody>,
+    Json(body): Json<UploadCertificateRequestBody>,
 ) -> impl IntoResponse {
     if body.validate().is_err() {
         return StatusCode::UNPROCESSABLE_ENTITY.into_response();

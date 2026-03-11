@@ -3,14 +3,14 @@ use crate::context::Context;
 use crate::scopes::UserScope;
 use axum::{Router, middleware, routing::post};
 
-mod create;
 mod request;
+mod upload;
 
 pub fn router(context: Context) -> Router<Context> {
     Router::new()
         .route(
             "/upload",
-            post(create::create)
+            post(upload::upload)
                 .route_layer(middleware::from_fn_with_state(
                     UserScope::CertificatesWrite,
                     scoped_middleware,
