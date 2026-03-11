@@ -17,7 +17,7 @@ impl Encryptor {
         }
     }
 
-    pub fn encrypt(&self, plaintext: &str) -> Result<String, String> {
+    pub fn encrypt(&self, plaintext: &str) -> anyhow::Result<String> {
         let mut nonce_bytes = [0u8; 12];
         OsRng.fill_bytes(&mut nonce_bytes);
         let nonce = Nonce::from_slice(&nonce_bytes);
@@ -27,19 +27,21 @@ impl Encryptor {
         combined.extend(
             self.cipher
                 .encrypt(nonce, plaintext.as_bytes())
-                .map_err(|e| format!("Encryptor::encrypt failed: {e}"))?,
+                .map_err(|e| anyhow::anyhow!("Encryptor::encrypt failed: {e}"))?,
         );
 
         Ok(STANDARD.encode(combined))
     }
 
-    pub fn decrypt(&self, encoded: &str) -> Result<String, String> {
+    pub fn decrypt(&self, encoded: &str) -> anyhow::Result<String> {
         let combined = STANDARD
             .decode(encoded)
-            .map_err(|e| format!("Encryptor::decrypt: invalid base64: {e}"))?;
+            .map_err(|e| anyhow::anyhow!("Encryptor::decrypt: invalid base64: {e}"))?;
 
         if combined.len() < 12 {
-            return Err("Encryptor::decrypt: data too short to contain nonce".into());
+            return Err(anyhow::anyhow!(
+                "Encryptor::decrypt: data too short to contain nonce"
+            ));
         }
 
         let (nonce_bytes, ciphertext) = combined.split_at(12);
@@ -48,8 +50,9 @@ impl Encryptor {
         let plaintext = self
             .cipher
             .decrypt(nonce, ciphertext)
-            .map_err(|e| format!("Encryptor::decrypt: authentication failed: {e}"))?;
+            .map_err(|e| anyhow::anyhow!("Encryptor::decrypt: authentication failed: {e}"))?;
 
-        String::from_utf8(plaintext).map_err(|e| format!("Encryptor::decrypt: invalid utf8: {e}"))
+        String::from_utf8(plaintext)
+            .map_err(|e| anyhow::anyhow!("Encryptor::decrypt: invalid utf8: {e}"))
     }
 }

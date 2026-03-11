@@ -1,6 +1,7 @@
 use std::{error::Error, sync::Arc};
 
 use crate::{
+    cert::CertificateAuthority,
     database::{Database, config::DatabaseConfig},
     jwt::{JwtConfig, JwtService},
     proxy::HostsManager,
@@ -13,6 +14,7 @@ pub struct Context {
     pub database: Arc<Database>,
     pub certificates_manager: Arc<CertificatesManager>,
     pub hosts_manager: Arc<HostsManager>,
+    pub certificate_authority: Arc<CertificateAuthority>,
 }
 
 impl Context {
@@ -41,11 +43,19 @@ impl Context {
         log::debug!("Creating hosts manager");
         let hosts_manager = Arc::new(HostsManager::new());
 
+        log::debug!("Creating certificates authority");
+        let certificate_authority = if cfg!(debug_assertions) {
+            CertificateAuthority::staging().into()
+        } else {
+            CertificateAuthority::production().into()
+        };
+
         Ok(Self {
             jwt,
             database,
             certificates_manager,
             hosts_manager,
+            certificate_authority,
         })
     }
 }

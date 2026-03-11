@@ -21,11 +21,11 @@ impl CertificatesManager {
         Self { certs, encryptor }
     }
 
-    pub fn encrypt_certificate_key(&self, cert_key: &str) -> Result<String, String> {
+    pub fn encrypt_certificate_key(&self, cert_key: &str) -> anyhow::Result<String> {
         self.encryptor.encrypt(cert_key)
     }
 
-    pub fn decrypt_certificate_key(&self, cert_key: &str) -> Result<String, String> {
+    pub fn decrypt_certificate_key(&self, cert_key: &str) -> anyhow::Result<String> {
         self.encryptor.decrypt(cert_key)
     }
 
