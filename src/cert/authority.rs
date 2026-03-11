@@ -28,12 +28,15 @@ impl CertificateAuthority {
         &self,
         domain: &str,
         dns_provider: &dyn DnsProvider,
+        dns_propagation_secs: u64,
     ) -> Result<Certificate> {
         // TODO: Save account credentials and use Account::from_credentials if user already exists
         let (account, _) = self.acme_account().await?;
         let mut order = self.acme_order(domain, &account).await?;
 
-        let records = self.dns_challenge(&mut order, dns_provider).await?;
+        let records = self
+            .dns_challenge(&mut order, dns_provider, dns_propagation_secs)
+            .await?;
 
         if records.is_empty() {
             bail!("No DNS challenges were completed — no TXT records created");
@@ -96,6 +99,7 @@ impl CertificateAuthority {
         &self,
         order: &mut Order,
         dns_provider: &dyn DnsProvider,
+        dns_propagation_secs: u64,
     ) -> Result<Vec<String>> {
         let mut authorizations = order.authorizations();
         let mut record_ids: Vec<String> = Vec::new();
@@ -119,6 +123,8 @@ impl CertificateAuthority {
                 .context("Failed to create DNS TXT record")?;
 
             record_ids.push(record_id);
+
+            tokio::time::sleep(std::time::Duration::from_secs(dns_propagation_secs)).await;
 
             challenge
                 .set_ready()

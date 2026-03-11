@@ -17,6 +17,8 @@ static DOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$").unwrap()
 });
 
+const DEFAULT_DNS_PROPAGATION_SECS: u64 = 30;
+
 #[derive(Deserialize, Validate)]
 pub struct CreateCertificateRequestBody {
     #[validate(length(min = 1, max = 255), regex(path = *DOMAIN_REGEX))]
@@ -24,6 +26,9 @@ pub struct CreateCertificateRequestBody {
 
     #[validate(length(min = 1))]
     dns_provider: String,
+
+    #[validate(range(min = 1, max = 300))]
+    dns_propagation_secs: Option<u64>,
 }
 
 pub async fn request(
@@ -52,7 +57,12 @@ async fn handle_request(
 
     let certificate = ctx
         .certificate_authority
-        .request_certificate(&body.domain, dns_provider.as_ref())
+        .request_certificate(
+            &body.domain,
+            dns_provider.as_ref(),
+            body.dns_propagation_secs
+                .unwrap_or(DEFAULT_DNS_PROPAGATION_SECS),
+        )
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 

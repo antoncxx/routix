@@ -111,10 +111,12 @@ impl DnsProvider for CloudflareDns {
             bail!("Cloudflare API error: {}", response.error_messages());
         }
 
-        response
+        let record_id = response
             .result
-            .ok_or_else(|| anyhow::anyhow!("Empty result in create TXT record response"))
-            .map(|r| r.id)
+            .ok_or_else(|| anyhow::anyhow!("Empty result in create TXT record response"))?
+            .id;
+
+        Ok(format!("{zone_id}/{record_id}"))
     }
 
     async fn delete_txt_record(&self, record_id: &str) -> Result<()> {
