@@ -1,6 +1,5 @@
 use chrono::{DateTime, Utc};
 use openssl::asn1::Asn1Time;
-use pingora_openssl::error::ErrorStack;
 use pingora_openssl::pkey::{PKey, Private};
 use pingora_openssl::ssl::{SslContextBuilder, SslMethod};
 use pingora_openssl::x509::X509;
@@ -12,7 +11,7 @@ pub struct Certificate {
 }
 
 impl Certificate {
-    pub fn new(cert_pem: &str, key_pem: &str) -> Result<Self, ErrorStack> {
+    pub fn new(cert_pem: &str, key_pem: &str) -> anyhow::Result<Self> {
         let certificate = X509::from_pem(cert_pem.as_bytes())?;
         let private_key = PKey::private_key_from_pem(key_pem.as_bytes())?;
 
@@ -27,7 +26,7 @@ impl Certificate {
         })
     }
 
-    pub fn expires_at(&self) -> Result<DateTime<Utc>, ErrorStack> {
+    pub fn expires_at(&self) -> anyhow::Result<DateTime<Utc>> {
         let not_after = self.certificate.not_after();
         let epoch = Asn1Time::from_unix(0)?;
         let diff = epoch.diff(not_after)?;

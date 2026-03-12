@@ -10,12 +10,10 @@ mod tls_resolver;
 pub use hosts_manager::*;
 pub use proxy_host::*;
 
-type Error = Box<dyn std::error::Error + Send + Sync>;
-
 #[allow(clippy::similar_names)]
-pub async fn run_proxy(context: Context) -> Result<(), Error> {
+pub async fn run_proxy(context: Context) -> anyhow::Result<()> {
     tokio::task::spawn_blocking(move || {
-        let mut server = Server::new(None)?;
+        let mut server = Server::new(None).map_err(|e| anyhow::anyhow!(e))?;
         server.bootstrap();
 
         let mut http_proxy =
@@ -27,7 +25,8 @@ pub async fn run_proxy(context: Context) -> Result<(), Error> {
             http_proxy_service(&server.configuration, RoutixProxy::new(context.clone()));
 
         let tls_settings =
-            TlsSettings::with_callbacks(Box::new(tls_resolver::TlsResolver::new(context)))?;
+            TlsSettings::with_callbacks(Box::new(tls_resolver::TlsResolver::new(context)))
+                .map_err(|e| anyhow::anyhow!(e))?;
 
         https_proxy.add_tls_with_settings("0.0.0.0:443", None, tls_settings);
 

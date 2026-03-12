@@ -1,3 +1,4 @@
+use anyhow::{Result, anyhow};
 use pingora::prelude::HttpPeer;
 
 use crate::database::models::ProxyHostModel;
@@ -9,13 +10,13 @@ pub enum ProxyHostSchema {
 }
 
 impl TryFrom<&str> for ProxyHostSchema {
-    type Error = String;
+    type Error = anyhow::Error;
 
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
+    fn try_from(value: &str) -> Result<Self> {
         match value {
             "http" => Ok(Self::Http),
             "https" => Ok(Self::Https),
-            _ => Err(format!("Invalid proxy schema: {value}")),
+            _ => Err(anyhow!("Invalid proxy schema: {value}")),
         }
     }
 }
@@ -30,9 +31,9 @@ pub struct ProxyHost {
 }
 
 impl TryFrom<ProxyHostModel> for ProxyHost {
-    type Error = String;
+    type Error = anyhow::Error;
 
-    fn try_from(value: ProxyHostModel) -> Result<Self, Self::Error> {
+    fn try_from(value: ProxyHostModel) -> Result<Self> {
         let forward_schema = ProxyHostSchema::try_from(value.forward_schema.as_str())?;
 
         Ok(Self {

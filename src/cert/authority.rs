@@ -101,6 +101,9 @@ impl CertificateAuthority {
         dns_provider: &dyn DnsProvider,
         dns_propagation_secs: u64,
     ) -> Result<Vec<String>> {
+        use std::time::Duration;
+        use tokio::time::sleep;
+
         let mut authorizations = order.authorizations();
         let mut record_ids: Vec<String> = Vec::new();
 
@@ -124,7 +127,7 @@ impl CertificateAuthority {
 
             record_ids.push(record_id);
 
-            tokio::time::sleep(std::time::Duration::from_secs(dns_propagation_secs)).await;
+            sleep(Duration::from_secs(dns_propagation_secs)).await;
 
             challenge
                 .set_ready()
