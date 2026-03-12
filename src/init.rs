@@ -97,15 +97,29 @@ async fn load_certificates(context: &Context) -> Result<(), Box<dyn Error>> {
 async fn load_proxy_hosts(context: &Context) -> Result<(), Box<dyn Error>> {
     log::debug!("Loading proxy hosts");
 
-    let proxy_hosts = ProxyHostsRepository::get_all(&context.database).await?;
+    let per_page = 100;
+    let mut page = 1;
 
-    for proxy_host_model in proxy_hosts {
-        let proxy_domain = proxy_host_model.domain.clone();
-        if let Ok(proxy_host) = ProxyHost::try_from(proxy_host_model) {
-            let () = context.hosts_manager.add(proxy_host).await;
-        } else {
-            log::warn!("Failed to load proxy host {proxy_domain}");
+    loop {
+        let (proxy_hosts, total) =
+            ProxyHostsRepository::get_all(&context.database, page, per_page).await?;
+
+        for proxy_host_model in proxy_hosts {
+            let proxy_domain = proxy_host_model.domain.clone();
+            if let Ok(proxy_host) = ProxyHost::try_from(proxy_host_model) {
+                context.hosts_manager.add(proxy_host).await;
+            } else {
+                log::warn!("Failed to load proxy host {proxy_domain}");
+            }
         }
+
+        let total_pages = (total + per_page - 1) / per_page;
+
+        if page >= total_pages {
+            break;
+        }
+
+        page += 1;
     }
 
     Ok(())

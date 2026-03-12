@@ -25,6 +25,10 @@ impl HostsManager {
             .insert(host.domain.clone(), Arc::new(host));
     }
 
+    pub async fn update(&self, host: ProxyHost) {
+        self.add(host).await;
+    }
+
     // pub async fn remove(&self, domain: &str) {
     //     self.hosts.write().await.remove(domain);
     // }

@@ -1,31 +1,32 @@
 use axum::Json;
-use axum::extract::State;
+use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::Deserialize;
 use validator::Validate;
 
-use crate::database::models::NewProxyHostModel;
+use crate::database::models::UpdateProxyHostModel;
 use crate::proxy::ProxyHost;
 use crate::{context::Context, database::repos::ProxyHostsRepository};
 
 use super::utils::{DOMAIN_REGEX, HOST_REGEX, validate_forward_schema};
 
 #[derive(Deserialize, Validate)]
-pub struct CreateProxyHostRequest {
+pub struct UpdateProxyHostRequest {
     #[validate(length(min = 1, max = 255), regex(path = *DOMAIN_REGEX))]
-    domain: String,
+    domain: Option<String>,
     #[validate(custom(function = "validate_forward_schema"))]
-    forward_schema: String,
+    forward_schema: Option<String>,
     #[validate(length(min = 1, max = 255), regex(path = *HOST_REGEX))]
-    forward_host: String,
+    forward_host: Option<String>,
     #[validate(range(min = 1, max = 65535))]
-    forward_port: i32,
-    certificate_name: Option<String>,
+    forward_port: Option<i32>,
+    #[allow(clippy::option_option)]
+    certificate_name: Option<Option<String>>,
 }
 
-impl From<CreateProxyHostRequest> for NewProxyHostModel {
-    fn from(value: CreateProxyHostRequest) -> Self {
+impl From<UpdateProxyHostRequest> for UpdateProxyHostModel {
+    fn from(value: UpdateProxyHostRequest) -> Self {
         Self {
             domain: value.domain,
             forward_schema: value.forward_schema,
@@ -36,15 +37,16 @@ impl From<CreateProxyHostRequest> for NewProxyHostModel {
     }
 }
 
-pub async fn create(
+pub async fn update(
     State(ctx): State<Context>,
-    Json(body): Json<CreateProxyHostRequest>,
+    Path(id): Path<i32>,
+    Json(body): Json<UpdateProxyHostRequest>,
 ) -> impl IntoResponse {
     if body.validate().is_err() {
         return StatusCode::UNPROCESSABLE_ENTITY.into_response();
     }
 
-    let model = match ProxyHostsRepository::create(body.into(), &ctx.database).await {
+    let model = match ProxyHostsRepository::update(id, body.into(), &ctx.database).await {
         Ok(model) => model,
         Err(e) if e.is_unique_violation() => return StatusCode::CONFLICT.into_response(),
         Err(e) if e.is_foreign_key_violation() => return StatusCode::BAD_REQUEST.into_response(),
@@ -55,6 +57,6 @@ pub async fn create(
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
 
-    ctx.hosts_manager.add(proxy_host).await;
-    StatusCode::CREATED.into_response()
+    ctx.hosts_manager.update(proxy_host).await;
+    StatusCode::OK.into_response()
 }

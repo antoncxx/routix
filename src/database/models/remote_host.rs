@@ -25,3 +25,15 @@ pub struct NewProxyHostModel {
     pub forward_port: i32,
     pub certificate_name: Option<String>,
 }
+
+#[derive(Debug, AsChangeset, Serialize, Deserialize, Default)]
+#[diesel(table_name = crate::database::schema::proxy_hosts)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct UpdateProxyHostModel {
+    pub domain: Option<String>,
+    pub forward_schema: Option<String>,
+    pub forward_host: Option<String>,
+    pub forward_port: Option<i32>,
+    #[allow(clippy::option_option)]
+    pub certificate_name: Option<Option<String>>,
+}
