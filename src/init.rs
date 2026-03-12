@@ -71,24 +71,35 @@ async fn ensure_admin_exists(context: &Context) -> Result<(), Box<dyn Error>> {
 async fn load_certificates(context: &Context) -> Result<(), Box<dyn Error>> {
     log::debug!("Loading certificates");
 
-    let certs = CertificatesRepository::get_all(&context.database).await?;
+    let per_page = 100;
+    let mut page = 1;
 
-    for cert in certs {
-        if let Ok(Ok(cert_pem)) = STANDARD.decode(&cert.certificate).map(String::from_utf8)
-            && let Ok(key_pem) = context
-                .certificates_manager
-                .decrypt_certificate_key(&cert.private_key)
-            && let Ok(certificate) = Certificate::new(&cert_pem, &key_pem)
-        {
-            log::debug!("Loaded certificate {}", cert.name);
+    loop {
+        let (certs, total) =
+            CertificatesRepository::get_all(&context.database, page, per_page).await?;
 
-            let _ = context
-                .certificates_manager
-                .add(&cert.name, certificate)
-                .await;
-        } else {
-            log::warn!("Failed to load {} certificate, ignoring ...", cert.name);
+        for cert in certs {
+            if let Ok(Ok(cert_pem)) = STANDARD.decode(&cert.certificate).map(String::from_utf8)
+                && let Ok(key_pem) = context
+                    .certificates_manager
+                    .decrypt_certificate_key(&cert.private_key)
+                && let Ok(certificate) = Certificate::new(&cert_pem, &key_pem)
+            {
+                log::debug!("Loaded certificate {}", cert.name);
+                let _ = context
+                    .certificates_manager
+                    .add(&cert.name, certificate)
+                    .await;
+            } else {
+                log::warn!("Failed to load {} certificate, ignoring ...", cert.name);
+            }
         }
+
+        let total_pages = (total + per_page - 1) / per_page;
+        if page >= total_pages {
+            break;
+        }
+        page += 1;
     }
 
     Ok(())

@@ -9,7 +9,7 @@ use crate::database::models::UpdateProxyHostModel;
 use crate::proxy::ProxyHost;
 use crate::{context::Context, database::repos::ProxyHostsRepository};
 
-use super::utils::{DOMAIN_REGEX, HOST_REGEX, validate_forward_schema};
+use crate::api::endpoints::utils::{DOMAIN_REGEX, HOST_REGEX, validate_forward_schema};
 
 #[derive(Deserialize, Validate)]
 pub struct UpdateProxyHostRequest {

@@ -74,13 +74,13 @@ mod tests {
             .issue(
                 "user-123",
                 UserRole::Admin,
-                vec![UserScope::CertificatesDelete],
+                vec![UserScope::CertificatesWrite],
             )
             .unwrap();
         let data = svc.verify(&token).unwrap();
 
         assert_eq!(data.claims.sub, "user-123");
-        assert!(data.claims.scopes.contains(&UserScope::CertificatesDelete));
+        assert!(data.claims.scopes.contains(&UserScope::CertificatesWrite));
     }
 
     #[test]

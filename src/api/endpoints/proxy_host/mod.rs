@@ -10,7 +10,6 @@ mod create;
 mod delete;
 mod get_all;
 mod update;
-mod utils;
 
 pub fn router(context: Context) -> Router<Context> {
     Router::new()

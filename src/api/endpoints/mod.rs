@@ -7,6 +7,8 @@ mod login;
 mod proxy_host;
 mod user;
 
+mod utils;
+
 pub fn build_router(context: Context) -> Router {
     Router::new()
         .route("/login", post(login::login))

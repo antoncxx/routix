@@ -5,7 +5,7 @@ use axum::response::IntoResponse;
 use serde::Deserialize;
 
 use crate::api::endpoints::utils::PaginatedResponse;
-use crate::{context::Context, database::repos::ProxyHostsRepository};
+use crate::{context::Context, database::repos::CertificatesRepository};
 
 #[derive(Deserialize)]
 pub struct PaginationQuery {
@@ -22,13 +22,14 @@ fn default_per_page() -> i64 {
     20
 }
 
-pub async fn fetch_all(
+pub async fn get_all(
     State(ctx): State<Context>,
     Query(pagination): Query<PaginationQuery>,
 ) -> impl IntoResponse {
-    match ProxyHostsRepository::get_all(&ctx.database, pagination.page, pagination.per_page).await {
-        Ok((hosts, total)) => Json(PaginatedResponse {
-            data: hosts,
+    match CertificatesRepository::get_all(&ctx.database, pagination.page, pagination.per_page).await
+    {
+        Ok((certs, total)) => Json(PaginatedResponse {
+            data: certs,
             total,
             page: pagination.page,
             per_page: pagination.per_page,
