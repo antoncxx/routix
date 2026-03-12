@@ -82,6 +82,31 @@ impl ProxyHostsRepository {
             .map_err(RepositoryError::Query)
     }
 
+    pub async fn update_certificate(
+        host_id: i32,
+        cert_name: Option<String>,
+        database: &Database,
+    ) -> Result<ProxyHostModel, RepositoryError> {
+        let connection = database
+            .connection()
+            .await
+            .map_err(RepositoryError::Connection)?;
+
+        connection
+            .interact(move |conn| {
+                use crate::database::schema::proxy_hosts::dsl::{
+                    certificate_name, id, proxy_hosts,
+                };
+                use diesel::prelude::*;
+                diesel::update(proxy_hosts.filter(id.eq(host_id)))
+                    .set(certificate_name.eq(cert_name))
+                    .get_result::<ProxyHostModel>(conn)
+            })
+            .await
+            .map_err(RepositoryError::Interact)?
+            .map_err(RepositoryError::Query)
+    }
+
     pub async fn delete(host_id: i32, database: &Database) -> Result<(), RepositoryError> {
         let connection = database
             .connection()
@@ -112,7 +137,7 @@ impl ProxyHostsRepository {
 
         connection
             .interact(move |conn| {
-                use crate::database::schema::proxy_hosts::dsl::{proxy_hosts, id};
+                use crate::database::schema::proxy_hosts::dsl::{id, proxy_hosts};
                 use diesel::prelude::*;
                 proxy_hosts
                     .filter(id.eq(host_id))

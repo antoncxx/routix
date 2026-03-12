@@ -2,7 +2,7 @@ use axum::Json;
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 use validator::Validate;
 
 use crate::database::models::UpdateProxyHostModel;
@@ -22,7 +22,17 @@ pub struct UpdateProxyHostRequest {
     #[validate(range(min = 1, max = 65535))]
     forward_port: Option<i32>,
     #[allow(clippy::option_option)]
-    certificate_name: Option<Option<String>>,
+    #[serde(default, deserialize_with = "deserialize_certificate_name")]
+    pub certificate_name: Option<Option<String>>,
+}
+
+#[allow(clippy::option_option)]
+fn deserialize_certificate_name<'de, T, D>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
+where
+    T: Deserialize<'de>,
+    D: Deserializer<'de>,
+{
+    Ok(Some(Option::deserialize(deserializer)?))
 }
 
 impl From<UpdateProxyHostRequest> for UpdateProxyHostModel {
@@ -32,8 +42,16 @@ impl From<UpdateProxyHostRequest> for UpdateProxyHostModel {
             forward_schema: value.forward_schema,
             forward_host: value.forward_host,
             forward_port: value.forward_port,
-            certificate_name: value.certificate_name,
         }
+    }
+}
+
+impl UpdateProxyHostRequest {
+    pub fn has_changes(&self) -> bool {
+        self.domain.is_some()
+            || self.forward_schema.is_some()
+            || self.forward_host.is_some()
+            || self.forward_port.is_some()
     }
 }
 
@@ -46,11 +64,33 @@ pub async fn update(
         return StatusCode::UNPROCESSABLE_ENTITY.into_response();
     }
 
-    let model = match ProxyHostsRepository::update(id, body.into(), &ctx.database).await {
-        Ok(model) => model,
-        Err(e) if e.is_unique_violation() => return StatusCode::CONFLICT.into_response(),
-        Err(e) if e.is_foreign_key_violation() => return StatusCode::BAD_REQUEST.into_response(),
-        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    let cert_name = body.certificate_name.clone();
+
+    let model = if body.has_changes() {
+        match ProxyHostsRepository::update(id, body.into(), &ctx.database).await {
+            Ok(model) => model,
+            Err(e) if e.is_unique_violation() => return StatusCode::CONFLICT.into_response(),
+            Err(e) if e.is_foreign_key_violation() => {
+                return StatusCode::BAD_REQUEST.into_response();
+            }
+            Err(e) if e.is_not_found() => return StatusCode::NOT_FOUND.into_response(),
+            Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        }
+    } else {
+        match ProxyHostsRepository::fetch(id, &ctx.database).await {
+            Ok(model) => model,
+            Err(e) if e.is_not_found() => return StatusCode::NOT_FOUND.into_response(),
+            Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        }
+    };
+
+    let model = if let Some(cert) = cert_name {
+        match ProxyHostsRepository::update_certificate(id, cert, &ctx.database).await {
+            Ok(model) => model,
+            Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        }
+    } else {
+        model
     };
 
     let Ok(proxy_host) = ProxyHost::try_from(model) else {

@@ -34,6 +34,4 @@ pub struct UpdateProxyHostModel {
     pub forward_schema: Option<String>,
     pub forward_host: Option<String>,
     pub forward_port: Option<i32>,
-    #[allow(clippy::option_option)]
-    pub certificate_name: Option<Option<String>>,
 }

@@ -39,7 +39,7 @@ pub fn router(context: Context) -> Router<Context> {
                 )),
         )
         .route(
-            "/:id",
+            "/{id}",
             put(update::update)
                 .route_layer(middleware::from_fn_with_state(
                     UserScope::ProxyHostsWrite,
@@ -51,7 +51,7 @@ pub fn router(context: Context) -> Router<Context> {
                 )),
         )
         .route(
-            "/:id",
+            "/{id}",
             delete(delete::delete)
                 .route_layer(middleware::from_fn_with_state(
                     UserScope::ProxyHostsWrite,
