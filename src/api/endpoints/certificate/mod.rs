@@ -41,7 +41,7 @@ pub fn router(context: Context) -> Router<Context> {
             "/",
             get(get_all::get_all)
                 .route_layer(middleware::from_fn_with_state(
-                    UserScope::CertificatesWrite,
+                    UserScope::CertificatesRead,
                     scoped_middleware,
                 ))
                 .route_layer(middleware::from_fn_with_state(
