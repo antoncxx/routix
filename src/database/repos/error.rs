@@ -64,4 +64,10 @@ impl RepositoryError {
             ))
         )
     }
+
+    pub fn is_not_found(&self) -> bool {
+        use diesel::result::Error;
+
+        matches!(self, RepositoryError::Query(Error::NotFound))
+    }
 }

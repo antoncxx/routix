@@ -29,7 +29,7 @@ impl HostsManager {
         self.add(host).await;
     }
 
-    // pub async fn remove(&self, domain: &str) {
-    //     self.hosts.write().await.remove(domain);
-    // }
+    pub async fn remove(&self, domain: &str) {
+        self.hosts.write().await.remove(domain);
+    }
 }

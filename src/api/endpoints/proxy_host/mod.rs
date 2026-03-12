@@ -3,13 +3,15 @@ use crate::context::Context;
 use crate::scopes::UserScope;
 use axum::{
     Router, middleware,
-    routing::{get, post, put},
+    routing::{delete, get, post, put},
 };
 
 mod create;
+mod delete;
 mod get_all;
 mod update;
 mod utils;
+
 pub fn router(context: Context) -> Router<Context> {
     Router::new()
         .route(
@@ -39,6 +41,18 @@ pub fn router(context: Context) -> Router<Context> {
         .route(
             "/:id",
             put(update::update)
+                .route_layer(middleware::from_fn_with_state(
+                    UserScope::ProxyHostsWrite,
+                    scoped_middleware,
+                ))
+                .route_layer(middleware::from_fn_with_state(
+                    context.clone(),
+                    auth_middleware,
+                )),
+        )
+        .route(
+            "/:id",
+            delete(delete::delete)
                 .route_layer(middleware::from_fn_with_state(
                     UserScope::ProxyHostsWrite,
                     scoped_middleware,

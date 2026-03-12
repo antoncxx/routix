@@ -19,7 +19,7 @@ impl ProxyHostsRepository {
 
         connection
             .interact(move |conn| {
-                use crate::database::schema::proxy_hosts::dsl::{proxy_hosts, id};
+                use crate::database::schema::proxy_hosts::dsl::{id, proxy_hosts};
                 use diesel::prelude::*;
 
                 let items = proxy_hosts
@@ -71,11 +71,52 @@ impl ProxyHostsRepository {
 
         connection
             .interact(move |conn| {
-                use crate::database::schema::proxy_hosts::dsl::{proxy_hosts, id};
+                use crate::database::schema::proxy_hosts::dsl::{id, proxy_hosts};
                 use diesel::prelude::*;
                 diesel::update(proxy_hosts.filter(id.eq(host_id)))
                     .set(&model)
                     .get_result::<ProxyHostModel>(conn)
+            })
+            .await
+            .map_err(RepositoryError::Interact)?
+            .map_err(RepositoryError::Query)
+    }
+
+    pub async fn delete(host_id: i32, database: &Database) -> Result<(), RepositoryError> {
+        let connection = database
+            .connection()
+            .await
+            .map_err(RepositoryError::Connection)?;
+
+        connection
+            .interact(move |conn| {
+                use crate::database::schema::proxy_hosts::dsl::{id, proxy_hosts};
+                use diesel::prelude::*;
+                diesel::delete(proxy_hosts.filter(id.eq(host_id)))
+                    .execute(conn)
+                    .map(|_| ())
+            })
+            .await
+            .map_err(RepositoryError::Interact)?
+            .map_err(RepositoryError::Query)
+    }
+
+    pub async fn fetch(
+        host_id: i32,
+        database: &Database,
+    ) -> Result<ProxyHostModel, RepositoryError> {
+        let connection = database
+            .connection()
+            .await
+            .map_err(RepositoryError::Connection)?;
+
+        connection
+            .interact(move |conn| {
+                use crate::database::schema::proxy_hosts::dsl::{proxy_hosts, id};
+                use diesel::prelude::*;
+                proxy_hosts
+                    .filter(id.eq(host_id))
+                    .first::<ProxyHostModel>(conn)
             })
             .await
             .map_err(RepositoryError::Interact)?
