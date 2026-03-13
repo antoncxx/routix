@@ -15,7 +15,7 @@ pingora = {version = "0.8", features = ["proxy", "openssl"] }
 serde = { version = "1.0", features = ["derive"] }
 tokio = "1.50"
 tower-http = "0.6"
-diesel = { version = "2.2", features = ["postgres", "chrono"] }
+diesel = { version = "2.3", features = ["postgres", "chrono"] }
 dotenvy = "0.15"
 chrono = { version = "0.4", features = ["serde"] }
 deadpool-diesel = { version = "0.6", features = ["postgres"] }
