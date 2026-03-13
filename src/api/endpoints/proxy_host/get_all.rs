@@ -2,30 +2,19 @@ use axum::Json;
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use serde::Deserialize;
+use validator::Validate;
 
-use crate::api::endpoints::utils::PaginatedResponse;
+use crate::api::endpoints::utils::{PaginatedResponse, PaginationQuery};
 use crate::{context::Context, database::repos::ProxyHostsRepository};
-
-#[derive(Deserialize)]
-pub struct PaginationQuery {
-    #[serde(default = "default_page")]
-    page: i64,
-    #[serde(default = "default_per_page")]
-    per_page: i64,
-}
-
-fn default_page() -> i64 {
-    1
-}
-fn default_per_page() -> i64 {
-    20
-}
 
 pub async fn fetch_all(
     State(ctx): State<Context>,
     Query(pagination): Query<PaginationQuery>,
 ) -> impl IntoResponse {
+    if pagination.validate().is_err() {
+        return StatusCode::UNPROCESSABLE_ENTITY.into_response();
+    }
+
     match ProxyHostsRepository::get_all(&ctx.database, pagination.page, pagination.per_page).await {
         Ok((hosts, total)) => Json(PaginatedResponse {
             data: hosts,

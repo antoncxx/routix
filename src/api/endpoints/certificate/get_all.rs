@@ -2,26 +2,12 @@ use axum::Json;
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
+use validator::Validate;
 
-use crate::api::endpoints::utils::PaginatedResponse;
+use crate::api::endpoints::utils::{PaginatedResponse, PaginationQuery};
 use crate::database::models::CertificateModel;
 use crate::{context::Context, database::repos::CertificatesRepository};
-
-#[derive(Deserialize)]
-pub struct PaginationQuery {
-    #[serde(default = "default_page")]
-    page: i64,
-    #[serde(default = "default_per_page")]
-    per_page: i64,
-}
-
-fn default_page() -> i64 {
-    1
-}
-fn default_per_page() -> i64 {
-    20
-}
 
 #[derive(Serialize)]
 pub struct CertificateReturnValue {
@@ -48,6 +34,10 @@ pub async fn get_all(
     State(ctx): State<Context>,
     Query(pagination): Query<PaginationQuery>,
 ) -> impl IntoResponse {
+    if pagination.validate().is_err() {
+        return StatusCode::UNPROCESSABLE_ENTITY.into_response();
+    }
+
     match CertificatesRepository::get_all(&ctx.database, pagination.page, pagination.per_page).await
     {
         Ok((certs, total)) => Json(PaginatedResponse {

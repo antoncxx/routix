@@ -1,6 +1,7 @@
 use regex::Regex;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::sync::LazyLock;
+use validator::Validate;
 
 pub(crate) static DOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$").unwrap()
@@ -9,6 +10,9 @@ pub(crate) static DOMAIN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 pub(crate) static HOST_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9-]+$").unwrap()
 });
+
+pub(crate) static USERNAME_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"^[a-zA-Z0-9_-]+$").unwrap());
 
 pub(crate) fn validate_forward_schema(schema: &str) -> Result<(), validator::ValidationError> {
     match schema {
@@ -26,4 +30,21 @@ pub(crate) struct PaginatedResponse<T> {
     pub page: i64,
     pub per_page: i64,
     pub total_pages: i64,
+}
+
+#[derive(Deserialize, Validate)]
+pub struct PaginationQuery {
+    #[serde(default = "default_page")]
+    #[validate(range(min = 1))]
+    pub(crate) page: i64,
+    #[serde(default = "default_per_page")]
+    #[validate(range(min = 1, max = 100))]
+    pub(crate) per_page: i64,
+}
+
+fn default_page() -> i64 {
+    1
+}
+fn default_per_page() -> i64 {
+    20
 }
