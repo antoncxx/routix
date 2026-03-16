@@ -23,3 +23,12 @@ pub struct NewUserModel {
     pub role: String,
     pub scopes: Vec<Option<String>>,
 }
+
+#[derive(Debug, AsChangeset, Serialize, Deserialize)]
+#[diesel(table_name = crate::database::schema::users)]
+#[diesel(check_for_backend(diesel::pg::Pg))]
+pub struct UpdateUserModel {
+    pub password: Option<String>,
+    pub role: Option<String>,
+    pub scopes: Option<Vec<Option<String>>>,
+}
