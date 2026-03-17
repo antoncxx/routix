@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use crate::{context::Context, proxy::ProxyHost};
 use async_trait::async_trait;
@@ -6,10 +7,12 @@ use pingora::prelude::*;
 
 pub(crate) struct RoutixProxy {
     context: Context,
+    counter: AtomicUsize,
 }
 
 pub(crate) struct RequestContext {
     pub proxy_host: Arc<ProxyHost>,
+    pub upstream_index: usize,
 }
 
 #[async_trait]
@@ -25,22 +28,25 @@ impl ProxyHttp for RoutixProxy {
         session: &mut Session,
         ctx: &mut Self::CTX,
     ) -> Result<Box<HttpPeer>> {
-        let hostname = session
-            .req_header()
-            .headers
-            .get("host")
-            .and_then(|v| v.to_str().ok())
-            .and_then(|v| v.split(':').next())
-            .unwrap_or("");
+        let proxy_host = self
+            .resolve_host(session)
+            .await
+            .ok_or_else(|| Error::new(ErrorType::HTTPStatus(502)))?;
 
-        let Some(proxy_host) = self.context.hosts_manager.get(hostname).await else {
-            return Err(Error::new(ErrorType::HTTPStatus(502)));
-        };
+        let index = self.counter.fetch_add(1, Ordering::Relaxed);
 
-        let upstream = proxy_host.upstream();
-        *ctx = Some(RequestContext { proxy_host });
+        let upstream = proxy_host
+            .select_upstream(index)
+            .ok_or_else(|| Error::new(ErrorType::HTTPStatus(502)))?;
 
-        Ok(upstream)
+        let peer = upstream.to_peer();
+
+        *ctx = Some(RequestContext {
+            proxy_host,
+            upstream_index: index,
+        });
+
+        Ok(peer)
     }
 
     async fn upstream_request_filter(
@@ -51,7 +57,12 @@ impl ProxyHttp for RoutixProxy {
     ) -> Result<()> {
         let Some(req_ctx) = ctx else { return Ok(()) };
 
-        upstream_request.insert_header("host", req_ctx.proxy_host.upstream_host_header())?;
+        let upstream = req_ctx
+            .proxy_host
+            .select_upstream(req_ctx.upstream_index)
+            .ok_or_else(|| Error::new(ErrorType::HTTPStatus(502)))?;
+
+        upstream_request.insert_header("host", upstream.host_header())?;
 
         Ok(())
     }
@@ -59,6 +70,20 @@ impl ProxyHttp for RoutixProxy {
 
 impl RoutixProxy {
     pub fn new(context: Context) -> Self {
-        Self { context }
+        Self {
+            context,
+            counter: AtomicUsize::new(0),
+        }
+    }
+
+    async fn resolve_host(&self, session: &Session) -> Option<Arc<ProxyHost>> {
+        let hostname = session
+            .req_header()
+            .headers
+            .get("host")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| v.split(':').next())?;
+
+        self.context.hosts_manager.get(hostname).await
     }
 }

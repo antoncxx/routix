@@ -7,36 +7,6 @@ use crate::database::{
 pub struct ProxyHostsRepository;
 
 impl ProxyHostsRepository {
-    pub async fn get_all(
-        database: &Database,
-        page: i64,
-        per_page: i64,
-    ) -> Result<(Vec<ProxyHostModel>, i64), RepositoryError> {
-        let connection = database
-            .connection()
-            .await
-            .map_err(RepositoryError::Connection)?;
-
-        connection
-            .interact(move |conn| {
-                use crate::database::schema::proxy_hosts::dsl::{id, proxy_hosts};
-                use diesel::prelude::*;
-
-                let items = proxy_hosts
-                    .order(id.asc())
-                    .limit(per_page)
-                    .offset((page - 1) * per_page)
-                    .load::<ProxyHostModel>(conn)?;
-
-                let total = proxy_hosts.count().get_result::<i64>(conn)?;
-
-                Ok((items, total))
-            })
-            .await
-            .map_err(RepositoryError::Interact)?
-            .map_err(RepositoryError::Query)
-    }
-
     pub async fn create(
         model: NewProxyHostModel,
         database: &Database,
@@ -142,6 +112,23 @@ impl ProxyHostsRepository {
                 proxy_hosts
                     .filter(id.eq(host_id))
                     .first::<ProxyHostModel>(conn)
+            })
+            .await
+            .map_err(RepositoryError::Interact)?
+            .map_err(RepositoryError::Query)
+    }
+
+    pub async fn count(database: &Database) -> Result<i64, RepositoryError> {
+        let connection = database
+            .connection()
+            .await
+            .map_err(RepositoryError::Connection)?;
+
+        connection
+            .interact(move |conn| {
+                use crate::database::schema::proxy_hosts::dsl::proxy_hosts;
+                use diesel::prelude::*;
+                proxy_hosts.count().get_result::<i64>(conn)
             })
             .await
             .map_err(RepositoryError::Interact)?

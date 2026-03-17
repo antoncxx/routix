@@ -6,6 +6,7 @@ mod hosts_manager;
 mod proxy_host;
 mod proxy_impl;
 mod tls_resolver;
+mod upstream;
 
 pub use hosts_manager::*;
 pub use proxy_host::*;
