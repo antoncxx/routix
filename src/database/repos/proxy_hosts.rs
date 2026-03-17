@@ -1,6 +1,6 @@
 use crate::database::{
     Database,
-    models::{NewProxyHostModel, ProxyHostModel, UpdateProxyHostModel},
+    models::{NewProxyHostModel, ProxyHostModel, ProxyHostUpstreamModel, UpdateProxyHostModel},
     repos::RepositoryError,
 };
 
@@ -9,6 +9,7 @@ pub struct ProxyHostsRepository;
 impl ProxyHostsRepository {
     pub async fn create(
         model: NewProxyHostModel,
+        upstream_ids: Vec<i32>,
         database: &Database,
     ) -> Result<ProxyHostModel, RepositoryError> {
         let connection = database
@@ -18,11 +19,29 @@ impl ProxyHostsRepository {
 
         connection
             .interact(move |conn| {
+                use crate::database::schema::proxy_host_upstreams::dsl::proxy_host_upstreams;
                 use crate::database::schema::proxy_hosts::dsl::proxy_hosts;
                 use diesel::prelude::*;
-                diesel::insert_into(proxy_hosts)
-                    .values(&model)
-                    .get_result::<ProxyHostModel>(conn)
+
+                conn.transaction(|conn| {
+                    let host = diesel::insert_into(proxy_hosts)
+                        .values(&model)
+                        .get_result::<ProxyHostModel>(conn)?;
+
+                    let links: Vec<ProxyHostUpstreamModel> = upstream_ids
+                        .into_iter()
+                        .map(|upstream_id| ProxyHostUpstreamModel {
+                            proxy_host_id: host.id,
+                            upstream_id,
+                        })
+                        .collect();
+
+                    diesel::insert_into(proxy_host_upstreams)
+                        .values(&links)
+                        .execute(conn)?;
+
+                    Ok(host)
+                })
             })
             .await
             .map_err(RepositoryError::Interact)?

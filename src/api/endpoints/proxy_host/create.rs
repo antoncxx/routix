@@ -26,11 +26,7 @@ pub async fn create(
     State(ctx): State<Context>,
     Json(body): Json<CreateProxyHostRequest>,
 ) -> impl IntoResponse {
-    if body.validate().is_err() {
-        return StatusCode::UNPROCESSABLE_ENTITY.into_response();
-    }
-
-    if body.upstream_ids.is_empty() {
+    if body.validate().is_err() || body.upstream_ids.is_empty() {
         return StatusCode::UNPROCESSABLE_ENTITY.into_response();
     }
 
@@ -39,12 +35,15 @@ pub async fn create(
         certificate_name: body.certificate_name,
     };
 
-    let host_model = match ProxyHostsRepository::create(model, &ctx.database).await {
-        Ok(model) => model,
-        Err(e) if e.is_unique_violation() => return StatusCode::CONFLICT.into_response(),
-        Err(e) if e.is_foreign_key_violation() => return StatusCode::BAD_REQUEST.into_response(),
-        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-    };
+    let host_model =
+        match ProxyHostsRepository::create(model, body.upstream_ids.clone(), &ctx.database).await {
+            Ok(model) => model,
+            Err(e) if e.is_unique_violation() => return StatusCode::CONFLICT.into_response(),
+            Err(e) if e.is_foreign_key_violation() => {
+                return StatusCode::BAD_REQUEST.into_response();
+            }
+            Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        };
 
     let Ok(upstream_models) =
         UpstreamsRepository::get_by_ids(body.upstream_ids, &ctx.database).await

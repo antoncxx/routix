@@ -6,6 +6,6 @@ mod user;
 
 pub use certificate::*;
 pub use proxy_host::*;
-// pub use proxy_host_upstream::*;
+pub use proxy_host_upstream::*;
 pub use upstream::*;
 pub use user::*;
