@@ -17,7 +17,7 @@ pub fn router(context: Context) -> Router<Context> {
             "/",
             get(get_all::fetch_all)
                 .route_layer(middleware::from_fn_with_state(
-                    UserScope::ProxyHostsRead,
+                    UserScope::UpstreamsRead,
                     scoped_middleware,
                 ))
                 .route_layer(middleware::from_fn_with_state(
@@ -29,7 +29,7 @@ pub fn router(context: Context) -> Router<Context> {
             "/",
             post(create::create)
                 .route_layer(middleware::from_fn_with_state(
-                    UserScope::ProxyHostsWrite,
+                    UserScope::UpstreamsWrite,
                     scoped_middleware,
                 ))
                 .route_layer(middleware::from_fn_with_state(
@@ -41,7 +41,7 @@ pub fn router(context: Context) -> Router<Context> {
             "/{id}",
             put(update::update)
                 .route_layer(middleware::from_fn_with_state(
-                    UserScope::ProxyHostsWrite,
+                    UserScope::UpstreamsWrite,
                     scoped_middleware,
                 ))
                 .route_layer(middleware::from_fn_with_state(
@@ -53,7 +53,7 @@ pub fn router(context: Context) -> Router<Context> {
             "/{id}",
             delete(delete::delete)
                 .route_layer(middleware::from_fn_with_state(
-                    UserScope::ProxyHostsWrite,
+                    UserScope::UpstreamsWrite,
                     scoped_middleware,
                 ))
                 .route_layer(middleware::from_fn_with_state(

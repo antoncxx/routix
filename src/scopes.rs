@@ -9,8 +9,8 @@ pub enum UserScope {
     ProxyHostsRead,
     ProxyHostsWrite,
 
-    RedirectionHostsRead,
-    RedirectionHostsWrite,
+    UpstreamsRead,
+    UpstreamsWrite,
 
     CertificatesRead,
     CertificatesWrite,
@@ -22,8 +22,8 @@ impl fmt::Display for UserScope {
             Self::ProxyHostsRead => "proxy_hosts_read",
             Self::ProxyHostsWrite => "proxy_hosts_write",
 
-            Self::RedirectionHostsRead => "redirection_hosts_read",
-            Self::RedirectionHostsWrite => "redirection_hosts_write",
+            Self::UpstreamsRead => "upstreams_read",
+            Self::UpstreamsWrite => "upstreams_write",
 
             Self::CertificatesRead => "certificates_read",
             Self::CertificatesWrite => "certificates_write",
@@ -40,8 +40,8 @@ impl FromStr for UserScope {
             "proxy_hosts_read" => Ok(Self::ProxyHostsRead),
             "proxy_hosts_write" => Ok(Self::ProxyHostsWrite),
 
-            "redirection_hosts_read" => Ok(Self::RedirectionHostsRead),
-            "redirection_hosts_write" => Ok(Self::RedirectionHostsWrite),
+            "upstreams_read" => Ok(Self::UpstreamsRead),
+            "upstreams_write" => Ok(Self::UpstreamsWrite),
 
             "certificates_read" => Ok(Self::CertificatesRead),
             "certificates_write" => Ok(Self::CertificatesWrite),
