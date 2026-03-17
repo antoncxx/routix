@@ -1,44 +1,15 @@
 use crate::database::{
     Database,
-    models::{NewProxyHostModel, ProxyHostModel, UpdateProxyHostModel},
+    models::{NewProxyHostModel, ProxyHostModel, ProxyHostUpstreamModel, UpdateProxyHostModel},
     repos::RepositoryError,
 };
 
 pub struct ProxyHostsRepository;
 
 impl ProxyHostsRepository {
-    pub async fn get_all(
-        database: &Database,
-        page: i64,
-        per_page: i64,
-    ) -> Result<(Vec<ProxyHostModel>, i64), RepositoryError> {
-        let connection = database
-            .connection()
-            .await
-            .map_err(RepositoryError::Connection)?;
-
-        connection
-            .interact(move |conn| {
-                use crate::database::schema::proxy_hosts::dsl::{id, proxy_hosts};
-                use diesel::prelude::*;
-
-                let items = proxy_hosts
-                    .order(id.asc())
-                    .limit(per_page)
-                    .offset((page - 1) * per_page)
-                    .load::<ProxyHostModel>(conn)?;
-
-                let total = proxy_hosts.count().get_result::<i64>(conn)?;
-
-                Ok((items, total))
-            })
-            .await
-            .map_err(RepositoryError::Interact)?
-            .map_err(RepositoryError::Query)
-    }
-
     pub async fn create(
         model: NewProxyHostModel,
+        upstream_ids: Vec<i32>,
         database: &Database,
     ) -> Result<ProxyHostModel, RepositoryError> {
         let connection = database
@@ -48,11 +19,29 @@ impl ProxyHostsRepository {
 
         connection
             .interact(move |conn| {
+                use crate::database::schema::proxy_host_upstreams::dsl::proxy_host_upstreams;
                 use crate::database::schema::proxy_hosts::dsl::proxy_hosts;
                 use diesel::prelude::*;
-                diesel::insert_into(proxy_hosts)
-                    .values(&model)
-                    .get_result::<ProxyHostModel>(conn)
+
+                conn.transaction(|conn| {
+                    let host = diesel::insert_into(proxy_hosts)
+                        .values(&model)
+                        .get_result::<ProxyHostModel>(conn)?;
+
+                    let links: Vec<ProxyHostUpstreamModel> = upstream_ids
+                        .into_iter()
+                        .map(|upstream_id| ProxyHostUpstreamModel {
+                            proxy_host_id: host.id,
+                            upstream_id,
+                        })
+                        .collect();
+
+                    diesel::insert_into(proxy_host_upstreams)
+                        .values(&links)
+                        .execute(conn)?;
+
+                    Ok(host)
+                })
             })
             .await
             .map_err(RepositoryError::Interact)?
@@ -142,6 +131,23 @@ impl ProxyHostsRepository {
                 proxy_hosts
                     .filter(id.eq(host_id))
                     .first::<ProxyHostModel>(conn)
+            })
+            .await
+            .map_err(RepositoryError::Interact)?
+            .map_err(RepositoryError::Query)
+    }
+
+    pub async fn count(database: &Database) -> Result<i64, RepositoryError> {
+        let connection = database
+            .connection()
+            .await
+            .map_err(RepositoryError::Connection)?;
+
+        connection
+            .interact(move |conn| {
+                use crate::database::schema::proxy_hosts::dsl::proxy_hosts;
+                use diesel::prelude::*;
+                proxy_hosts.count().get_result::<i64>(conn)
             })
             .await
             .map_err(RepositoryError::Interact)?

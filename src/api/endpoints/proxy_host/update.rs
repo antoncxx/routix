@@ -7,23 +7,21 @@ use validator::Validate;
 
 use crate::database::models::UpdateProxyHostModel;
 use crate::proxy::ProxyHost;
-use crate::{context::Context, database::repos::ProxyHostsRepository};
+use crate::{
+    context::Context,
+    database::repos::{ProxyHostUpstreamsRepository, ProxyHostsRepository, UpstreamsRepository},
+};
 
-use crate::api::endpoints::utils::{DOMAIN_REGEX, HOST_REGEX, validate_forward_schema};
+use crate::api::endpoints::utils::DOMAIN_REGEX;
 
 #[derive(Deserialize, Validate)]
 pub struct UpdateProxyHostRequest {
     #[validate(length(min = 1, max = 255), regex(path = *DOMAIN_REGEX))]
     domain: Option<String>,
-    #[validate(custom(function = "validate_forward_schema"))]
-    forward_schema: Option<String>,
-    #[validate(length(min = 1, max = 255), regex(path = *HOST_REGEX))]
-    forward_host: Option<String>,
-    #[validate(range(min = 1, max = 65535))]
-    forward_port: Option<i32>,
     #[allow(clippy::option_option)]
     #[serde(default, deserialize_with = "deserialize_certificate_name")]
     pub certificate_name: Option<Option<String>>,
+    pub upstream_ids: Option<Vec<i32>>,
 }
 
 #[allow(clippy::option_option)]
@@ -35,23 +33,15 @@ where
     Ok(Some(Option::deserialize(deserializer)?))
 }
 
-impl From<UpdateProxyHostRequest> for UpdateProxyHostModel {
-    fn from(value: UpdateProxyHostRequest) -> Self {
-        Self {
-            domain: value.domain,
-            forward_schema: value.forward_schema,
-            forward_host: value.forward_host,
-            forward_port: value.forward_port,
-        }
-    }
-}
-
 impl UpdateProxyHostRequest {
     pub fn has_changes(&self) -> bool {
         self.domain.is_some()
-            || self.forward_schema.is_some()
-            || self.forward_host.is_some()
-            || self.forward_port.is_some()
+    }
+
+    pub fn to_model(&self) -> UpdateProxyHostModel {
+        UpdateProxyHostModel {
+            domain: self.domain.clone(),
+        }
     }
 }
 
@@ -64,10 +54,16 @@ pub async fn update(
         return StatusCode::UNPROCESSABLE_ENTITY.into_response();
     }
 
+    if let Some(ref ids) = body.upstream_ids
+        && ids.is_empty()
+    {
+        return StatusCode::UNPROCESSABLE_ENTITY.into_response();
+    }
+
     let cert_name = body.certificate_name.clone();
 
-    let model = if body.has_changes() {
-        match ProxyHostsRepository::update(id, body.into(), &ctx.database).await {
+    let host_model = if body.has_changes() {
+        match ProxyHostsRepository::update(id, body.to_model(), &ctx.database).await {
             Ok(model) => model,
             Err(e) if e.is_unique_violation() => return StatusCode::CONFLICT.into_response(),
             Err(e) if e.is_foreign_key_violation() => {
@@ -84,16 +80,27 @@ pub async fn update(
         }
     };
 
-    let model = if let Some(cert) = cert_name {
+    let host_model = if let Some(cert) = cert_name {
         match ProxyHostsRepository::update_certificate(id, cert, &ctx.database).await {
             Ok(model) => model,
             Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
         }
     } else {
-        model
+        host_model
     };
 
-    let Ok(proxy_host) = ProxyHost::try_from(model) else {
+    let upstream_ids =
+        match ProxyHostUpstreamsRepository::get_by_proxy_host(id, &ctx.database).await {
+            Ok(upstreams) => upstreams.into_iter().map(|u| u.id).collect(),
+            Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        };
+
+    let Ok(upstream_models) = UpstreamsRepository::get_by_ids(upstream_ids, &ctx.database).await
+    else {
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    };
+
+    let Ok(proxy_host) = ProxyHost::new(host_model, upstream_models) else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
 

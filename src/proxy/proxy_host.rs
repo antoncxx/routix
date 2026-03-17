@@ -1,68 +1,31 @@
-use anyhow::{Result, anyhow};
-use pingora::prelude::HttpPeer;
-
-use crate::database::models::ProxyHostModel;
-
-#[derive(Debug, Clone)]
-pub enum ProxyHostSchema {
-    Http,
-    Https,
-}
-
-impl TryFrom<&str> for ProxyHostSchema {
-    type Error = anyhow::Error;
-
-    fn try_from(value: &str) -> Result<Self> {
-        match value {
-            "http" => Ok(Self::Http),
-            "https" => Ok(Self::Https),
-            _ => Err(anyhow!("Invalid proxy schema: {value}")),
-        }
-    }
-}
+use crate::{
+    database::models::{ProxyHostModel, UpstreamModel},
+    proxy::upstream::Upstream,
+};
+use anyhow::Result;
 
 #[derive(Debug, Clone)]
 pub struct ProxyHost {
     pub domain: String,
-    pub forward_host: String,
-    pub forward_port: i32,
-    pub forward_schema: ProxyHostSchema,
     pub certificate_name: Option<String>,
-}
-
-impl TryFrom<ProxyHostModel> for ProxyHost {
-    type Error = anyhow::Error;
-
-    fn try_from(value: ProxyHostModel) -> Result<Self> {
-        let forward_schema = ProxyHostSchema::try_from(value.forward_schema.as_str())?;
-
-        Ok(Self {
-            domain: value.domain,
-            forward_host: value.forward_host,
-            forward_port: value.forward_port,
-            forward_schema,
-            certificate_name: value.certificate_name,
-        })
-    }
+    pub upstreams: Vec<Upstream>,
 }
 
 impl ProxyHost {
-    pub fn is_https(&self) -> bool {
-        matches!(self.forward_schema, ProxyHostSchema::Https)
+    pub fn new(model: ProxyHostModel, upstream_models: Vec<UpstreamModel>) -> Result<Self> {
+        let upstreams = upstream_models
+            .into_iter()
+            .map(Upstream::try_from)
+            .collect::<Result<Vec<_>>>()?;
+
+        Ok(Self {
+            domain: model.domain,
+            certificate_name: model.certificate_name,
+            upstreams,
+        })
     }
 
-    pub fn upstream(&self) -> Box<HttpPeer> {
-        let address = format!("{}:{}", self.forward_host, self.forward_port);
-        let peer = HttpPeer::new(address, self.is_https(), self.forward_host.clone());
-        Box::new(peer)
-    }
-
-    pub fn upstream_host_header(&self) -> String {
-        match (&self.forward_schema, self.forward_port) {
-            (ProxyHostSchema::Http, 80) | (ProxyHostSchema::Https, 443) => {
-                self.forward_host.clone()
-            }
-            (_, port) => format!("{}:{}", self.forward_host, port),
-        }
+    pub fn select_upstream(&self, index: usize) -> Option<Upstream> {
+        self.upstreams.get(index % self.upstreams.len()).cloned()
     }
 }

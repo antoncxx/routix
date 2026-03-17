@@ -7,51 +7,51 @@ use validator::Validate;
 
 use crate::database::models::NewProxyHostModel;
 use crate::proxy::ProxyHost;
-use crate::{context::Context, database::repos::ProxyHostsRepository};
+use crate::{
+    context::Context,
+    database::repos::{ProxyHostsRepository, UpstreamsRepository},
+};
 
-use crate::api::endpoints::utils::{DOMAIN_REGEX, HOST_REGEX, validate_forward_schema};
+use crate::api::endpoints::utils::DOMAIN_REGEX;
 
 #[derive(Deserialize, Validate)]
 pub struct CreateProxyHostRequest {
     #[validate(length(min = 1, max = 255), regex(path = *DOMAIN_REGEX))]
     domain: String,
-    #[validate(custom(function = "validate_forward_schema"))]
-    forward_schema: String,
-    #[validate(length(min = 1, max = 255), regex(path = *HOST_REGEX))]
-    forward_host: String,
-    #[validate(range(min = 1, max = 65535))]
-    forward_port: i32,
     certificate_name: Option<String>,
-}
-
-impl From<CreateProxyHostRequest> for NewProxyHostModel {
-    fn from(value: CreateProxyHostRequest) -> Self {
-        Self {
-            domain: value.domain,
-            forward_schema: value.forward_schema,
-            forward_host: value.forward_host,
-            forward_port: value.forward_port,
-            certificate_name: value.certificate_name,
-        }
-    }
+    upstream_ids: Vec<i32>,
 }
 
 pub async fn create(
     State(ctx): State<Context>,
     Json(body): Json<CreateProxyHostRequest>,
 ) -> impl IntoResponse {
-    if body.validate().is_err() {
+    if body.validate().is_err() || body.upstream_ids.is_empty() {
         return StatusCode::UNPROCESSABLE_ENTITY.into_response();
     }
 
-    let model = match ProxyHostsRepository::create(body.into(), &ctx.database).await {
-        Ok(model) => model,
-        Err(e) if e.is_unique_violation() => return StatusCode::CONFLICT.into_response(),
-        Err(e) if e.is_foreign_key_violation() => return StatusCode::BAD_REQUEST.into_response(),
-        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    let model = NewProxyHostModel {
+        domain: body.domain,
+        certificate_name: body.certificate_name,
     };
 
-    let Ok(proxy_host) = ProxyHost::try_from(model) else {
+    let host_model =
+        match ProxyHostsRepository::create(model, body.upstream_ids.clone(), &ctx.database).await {
+            Ok(model) => model,
+            Err(e) if e.is_unique_violation() => return StatusCode::CONFLICT.into_response(),
+            Err(e) if e.is_foreign_key_violation() => {
+                return StatusCode::BAD_REQUEST.into_response();
+            }
+            Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        };
+
+    let Ok(upstream_models) =
+        UpstreamsRepository::get_by_ids(body.upstream_ids, &ctx.database).await
+    else {
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    };
+
+    let Ok(proxy_host) = ProxyHost::new(host_model, upstream_models) else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
 

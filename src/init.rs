@@ -4,7 +4,10 @@ use crate::{
     context::Context,
     database::{
         models::NewUserModel,
-        repos::{CertificatesRepository, ProxyHostsRepository, RepositoryError, UsersRepository},
+        repos::{
+            CertificatesRepository, ProxyHostUpstreamsRepository, ProxyHostsRepository,
+            RepositoryError, UsersRepository,
+        },
     },
     proxy::ProxyHost,
     roles::UserRole,
@@ -112,15 +115,21 @@ async fn load_proxy_hosts(context: &Context) -> Result<(), Box<dyn Error>> {
     let mut page = 1;
 
     loop {
-        let (proxy_hosts, total) =
-            ProxyHostsRepository::get_all(&context.database, page, per_page).await?;
+        let data =
+            ProxyHostUpstreamsRepository::get_all_with_upstreams(&context.database, page, per_page)
+                .await?;
 
-        for proxy_host_model in proxy_hosts {
+        let total = ProxyHostsRepository::count(&context.database).await?;
+
+        for (proxy_host_model, upstream_models) in data {
             let proxy_domain = proxy_host_model.domain.clone();
-            if let Ok(proxy_host) = ProxyHost::try_from(proxy_host_model) {
-                context.hosts_manager.add(proxy_host).await;
-            } else {
-                log::warn!("Failed to load proxy host {proxy_domain}");
+            match ProxyHost::new(proxy_host_model, upstream_models) {
+                Ok(proxy_host) => {
+                    context.hosts_manager.add(proxy_host).await;
+                }
+                Err(_) => {
+                    log::warn!("Failed to load proxy host {proxy_domain}");
+                }
             }
         }
 
