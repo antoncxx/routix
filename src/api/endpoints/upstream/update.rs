@@ -43,12 +43,14 @@ pub async fn update(
         schema: body.schema,
     };
 
-    match UpstreamsRepository::update(id, model, &ctx.database).await {
-        Ok(upstream) => Json(upstream).into_response(),
-        Err(e) if e.is_unique_violation() => StatusCode::CONFLICT.into_response(),
-        Err(e) if e.is_not_found() => StatusCode::NOT_FOUND.into_response(),
-        Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-    }
-}
+    let upstream_model = match UpstreamsRepository::update(id, model, &ctx.database).await {
+        Ok(upstream) => upstream,
+        Err(e) if e.is_unique_violation() => return StatusCode::CONFLICT.into_response(),
+        Err(e) if e.is_not_found() => return StatusCode::NOT_FOUND.into_response(),
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    };
 
-// @TODO: update proxy hosts that reference this upstream
+    ctx.hosts_manager.update_upstream(&upstream_model).await;
+
+    Json(upstream_model).into_response()
+}

@@ -23,7 +23,7 @@ impl TryFrom<&str> for UpstreamSchema {
 
 #[derive(Debug, Clone)]
 pub struct Upstream {
-    pub _name: String,
+    pub name: String,
     pub host: String,
     pub port: i32,
     pub schema: UpstreamSchema,
@@ -36,7 +36,7 @@ impl TryFrom<UpstreamModel> for Upstream {
         let schema = UpstreamSchema::try_from(value.schema.as_str())?;
 
         Ok(Self {
-            _name: value.name,
+            name: value.name,
             host: value.host,
             port: value.port,
             schema,

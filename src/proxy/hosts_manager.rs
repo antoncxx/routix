@@ -1,4 +1,4 @@
-use crate::proxy::ProxyHost;
+use crate::{database::models::UpstreamModel, proxy::ProxyHost};
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
 
@@ -31,5 +31,13 @@ impl HostsManager {
 
     pub async fn remove(&self, domain: &str) {
         self.hosts.write().await.remove(domain);
+    }
+
+    pub async fn update_upstream(&self, upstream: &UpstreamModel) {
+        let mut hosts = self.hosts.write().await;
+
+        for (_, proxy_host) in hosts.iter_mut() {
+            let _ = Arc::make_mut(proxy_host).update_upstream(upstream);
+        }
     }
 }

@@ -28,4 +28,16 @@ impl ProxyHost {
     pub fn select_upstream(&self, index: usize) -> Option<Upstream> {
         self.upstreams.get(index % self.upstreams.len()).cloned()
     }
+
+    pub fn update_upstream(&mut self, upstream_model: &UpstreamModel) -> Result<()> {
+        if let Some(existing) = self
+            .upstreams
+            .iter_mut()
+            .find(|u| u.name == upstream_model.name)
+        {
+            *existing = Upstream::try_from(upstream_model.clone())?;
+        }
+
+        Ok(())
+    }
 }
