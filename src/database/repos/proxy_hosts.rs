@@ -96,6 +96,29 @@ impl ProxyHostsRepository {
             .map_err(RepositoryError::Query)
     }
 
+    pub async fn update_access_list(
+        host_id: i32,
+        list_id: Option<i32>,
+        database: &Database,
+    ) -> Result<ProxyHostModel, RepositoryError> {
+        let connection = database
+            .connection()
+            .await
+            .map_err(RepositoryError::Connection)?;
+
+        connection
+            .interact(move |conn| {
+                use crate::database::schema::proxy_hosts::dsl::{access_list_id, id, proxy_hosts};
+                use diesel::prelude::*;
+                diesel::update(proxy_hosts.filter(id.eq(host_id)))
+                    .set(access_list_id.eq(list_id))
+                    .get_result::<ProxyHostModel>(conn)
+            })
+            .await
+            .map_err(RepositoryError::Interact)?
+            .map_err(RepositoryError::Query)
+    }
+
     pub async fn delete(host_id: i32, database: &Database) -> Result<(), RepositoryError> {
         let connection = database
             .connection()

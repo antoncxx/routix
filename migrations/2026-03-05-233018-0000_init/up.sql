@@ -1,5 +1,3 @@
--- Your SQL goes here
-
 CREATE TABLE users (
     id          SERIAL PRIMARY KEY,
     username    VARCHAR(100) NOT NULL UNIQUE,
@@ -29,10 +27,26 @@ CREATE TABLE upstreams (
     created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE access_lists (
+    id          SERIAL PRIMARY KEY,
+    name        VARCHAR(100) NOT NULL UNIQUE,
+    created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE access_list_rules (
+    id              SERIAL PRIMARY KEY,
+    access_list_id  INTEGER      NOT NULL REFERENCES access_lists(id) ON DELETE CASCADE,
+    action          VARCHAR(5)   NOT NULL CHECK (action IN ('allow', 'deny')),
+    address         VARCHAR(50)  NOT NULL, -- e.g. '192.168.1.0/24', '10.0.0.1', 'all'
+    sort_order      INTEGER      NOT NULL DEFAULT 0,
+    created_at      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE proxy_hosts (
     id                  SERIAL PRIMARY KEY,
     domain              VARCHAR(255)    NOT NULL UNIQUE,
     certificate_name    VARCHAR(255)    REFERENCES certificates(name),
+    access_list_id      INTEGER         REFERENCES access_lists(id) ON DELETE SET NULL,
     created_at          TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );
 
@@ -41,3 +55,6 @@ CREATE TABLE proxy_host_upstreams (
     upstream_id     INTEGER NOT NULL REFERENCES upstreams(id) ON DELETE RESTRICT,
     PRIMARY KEY (proxy_host_id, upstream_id)
 );
+
+CREATE INDEX idx_access_list_rules_list_order
+    ON access_list_rules(access_list_id, sort_order);

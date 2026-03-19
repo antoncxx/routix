@@ -20,7 +20,7 @@ pub async fn run_proxy(context: Context) -> anyhow::Result<()> {
         let mut http_proxy =
             http_proxy_service(&server.configuration, RoutixProxy::new(context.clone()));
 
-        http_proxy.add_tcp("0.0.0.0:80");
+        http_proxy.add_tcp("0.0.0.0:8011");
 
         let mut https_proxy =
             http_proxy_service(&server.configuration, RoutixProxy::new(context.clone()));
@@ -29,7 +29,7 @@ pub async fn run_proxy(context: Context) -> anyhow::Result<()> {
             TlsSettings::with_callbacks(Box::new(tls_resolver::TlsResolver::new(context)))
                 .map_err(|e| anyhow::anyhow!(e))?;
 
-        https_proxy.add_tls_with_settings("0.0.0.0:443", None, tls_settings);
+        https_proxy.add_tls_with_settings("0.0.0.0:4431", None, tls_settings);
 
         server.add_service(http_proxy);
         server.add_service(https_proxy);

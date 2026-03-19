@@ -9,6 +9,7 @@ pub struct ProxyHostModel {
     pub id: i32,
     pub domain: String,
     pub certificate_name: Option<String>,
+    pub access_list_id: Option<i32>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -18,6 +19,7 @@ pub struct ProxyHostModel {
 pub struct NewProxyHostModel {
     pub domain: String,
     pub certificate_name: Option<String>,
+    pub access_list_id: Option<i32>,
 }
 
 #[derive(Debug, AsChangeset, Serialize, Deserialize, Default)]

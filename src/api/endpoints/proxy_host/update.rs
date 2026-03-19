@@ -21,11 +21,23 @@ pub struct UpdateProxyHostRequest {
     #[allow(clippy::option_option)]
     #[serde(default, deserialize_with = "deserialize_certificate_name")]
     pub certificate_name: Option<Option<String>>,
+    #[allow(clippy::option_option)]
+    #[serde(default, deserialize_with = "deserialize_access_list_id")]
+    pub access_list_id: Option<Option<i32>>,
     pub upstream_ids: Option<Vec<i32>>,
 }
 
 #[allow(clippy::option_option)]
 fn deserialize_certificate_name<'de, T, D>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
+where
+    T: Deserialize<'de>,
+    D: Deserializer<'de>,
+{
+    Ok(Some(Option::deserialize(deserializer)?))
+}
+
+#[allow(clippy::option_option)]
+fn deserialize_access_list_id<'de, T, D>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
 where
     T: Deserialize<'de>,
     D: Deserializer<'de>,
@@ -61,6 +73,7 @@ pub async fn update(
     }
 
     let cert_name = body.certificate_name.clone();
+    let access_list_id = body.access_list_id;
 
     let host_model = if body.has_changes() {
         match ProxyHostsRepository::update(id, body.to_model(), &ctx.database).await {
@@ -89,6 +102,15 @@ pub async fn update(
         host_model
     };
 
+    let host_model = if let Some(access_list) = access_list_id {
+        match ProxyHostsRepository::update_access_list(id, access_list, &ctx.database).await {
+            Ok(model) => model,
+            Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        }
+    } else {
+        host_model
+    };
+
     let upstream_ids =
         match ProxyHostUpstreamsRepository::get_by_proxy_host(id, &ctx.database).await {
             Ok(upstreams) => upstreams.into_iter().map(|u| u.id).collect(),
@@ -107,3 +129,5 @@ pub async fn update(
     ctx.hosts_manager.update(proxy_host).await;
     StatusCode::OK.into_response()
 }
+
+// @TODO: Add fetch list and rules and add them to ProxyHost model

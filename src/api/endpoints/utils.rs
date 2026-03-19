@@ -1,5 +1,6 @@
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::net::IpAddr;
 use std::sync::LazyLock;
 use validator::Validate;
 
@@ -21,6 +22,38 @@ pub(crate) fn validate_forward_schema(schema: &str) -> Result<(), validator::Val
             "forward_schema must be 'http' or 'https'",
         )),
     }
+}
+
+pub(crate) fn validate_access_list_action(action: &str) -> Result<(), validator::ValidationError> {
+    match action {
+        "allow" | "deny" => Ok(()),
+        _ => Err(validator::ValidationError::new("invalid_action")),
+    }
+}
+
+pub(crate) fn validate_address(address: &str) -> Result<(), validator::ValidationError> {
+    // Try plain IP first
+    if address.parse::<IpAddr>().is_ok() {
+        return Ok(());
+    }
+
+    // Try CIDR (e.g. 192.168.1.0/24 or 2001:db8::/32)
+    if let Some((ip_part, prefix_part)) = address.split_once('/') {
+        if let Ok(ip) = ip_part.parse::<IpAddr>() {
+            if let Ok(prefix) = prefix_part.parse::<u8>() {
+                let max = match ip {
+                    IpAddr::V4(_) => 32,
+                    IpAddr::V6(_) => 128,
+                };
+
+                if prefix <= max {
+                    return Ok(());
+                }
+            }
+        }
+    }
+
+    Err(validator::ValidationError::new("invalid_address"))
 }
 
 #[derive(Serialize)]

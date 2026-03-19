@@ -19,6 +19,7 @@ pub struct CreateProxyHostRequest {
     #[validate(length(min = 1, max = 255), regex(path = *DOMAIN_REGEX))]
     domain: String,
     certificate_name: Option<String>,
+    access_list_id: Option<i32>,
     upstream_ids: Vec<i32>,
 }
 
@@ -33,6 +34,7 @@ pub async fn create(
     let model = NewProxyHostModel {
         domain: body.domain,
         certificate_name: body.certificate_name,
+        access_list_id: body.access_list_id,
     };
 
     let host_model =

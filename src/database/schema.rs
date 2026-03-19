@@ -1,6 +1,28 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
+    access_list_rules (id) {
+        id -> Int4,
+        access_list_id -> Int4,
+        #[max_length = 5]
+        action -> Varchar,
+        #[max_length = 50]
+        address -> Varchar,
+        sort_order -> Int4,
+        created_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
+    access_lists (id) {
+        id -> Int4,
+        #[max_length = 100]
+        name -> Varchar,
+        created_at -> Timestamptz,
+    }
+}
+
+diesel::table! {
     certificates (id) {
         id -> Int4,
         #[max_length = 255]
@@ -31,6 +53,7 @@ diesel::table! {
         domain -> Varchar,
         #[max_length = 255]
         certificate_name -> Nullable<Varchar>,
+        access_list_id -> Nullable<Int4>,
         created_at -> Timestamptz,
     }
 }
@@ -63,10 +86,14 @@ diesel::table! {
     }
 }
 
+diesel::joinable!(access_list_rules -> access_lists (access_list_id));
 diesel::joinable!(proxy_host_upstreams -> proxy_hosts (proxy_host_id));
 diesel::joinable!(proxy_host_upstreams -> upstreams (upstream_id));
+diesel::joinable!(proxy_hosts -> access_lists (access_list_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
+    access_list_rules,
+    access_lists,
     certificates,
     proxy_host_upstreams,
     proxy_hosts,
