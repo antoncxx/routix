@@ -51,39 +51,6 @@ impl AccessListsRepository {
             .map_err(RepositoryError::Query)
     }
 
-    pub async fn fetch(
-        list_id: i32,
-        database: &Database,
-    ) -> Result<(AccessListModel, Vec<AccessListRuleModel>), RepositoryError> {
-        let connection = database
-            .connection()
-            .await
-            .map_err(RepositoryError::Connection)?;
-
-        connection
-            .interact(move |conn| {
-                use crate::database::schema::access_list_rules::dsl::{
-                    access_list_id, access_list_rules, sort_order,
-                };
-                use crate::database::schema::access_lists::dsl::{access_lists, id};
-                use diesel::prelude::*;
-
-                let access_list = access_lists
-                    .filter(id.eq(list_id))
-                    .first::<AccessListModel>(conn)?;
-
-                let rules = access_list_rules
-                    .filter(access_list_id.eq(list_id))
-                    .order(sort_order.asc())
-                    .load::<AccessListRuleModel>(conn)?;
-
-                Ok((access_list, rules))
-            })
-            .await
-            .map_err(RepositoryError::Interact)?
-            .map_err(RepositoryError::Query)
-    }
-
     pub async fn count(database: &Database) -> Result<i64, RepositoryError> {
         let connection = database
             .connection()
@@ -140,11 +107,7 @@ impl AccessListsRepository {
             .map_err(RepositoryError::Query)
     }
 
-    pub async fn set_rules(
-        list_id: i32,
-        rules: Vec<NewAccessListRuleModel>,
-        database: &Database,
-    ) -> Result<(AccessListModel, Vec<AccessListRuleModel>), RepositoryError> {
+    pub async fn delete(list_id: i32, database: &Database) -> Result<(), RepositoryError> {
         let connection = database
             .connection()
             .await
@@ -152,35 +115,21 @@ impl AccessListsRepository {
 
         connection
             .interact(move |conn| {
-                use crate::database::schema::access_list_rules::dsl::{
-                    access_list_id, access_list_rules,
-                };
                 use crate::database::schema::access_lists::dsl::{access_lists, id};
                 use diesel::prelude::*;
-
-                conn.transaction(|conn| {
-                    let access_list = access_lists
-                        .filter(id.eq(list_id))
-                        .first::<AccessListModel>(conn)?;
-
-                    diesel::delete(access_list_rules.filter(access_list_id.eq(list_id)))
-                        .execute(conn)?;
-
-                    let rules = diesel::insert_into(access_list_rules)
-                        .values(&rules)
-                        .get_results::<AccessListRuleModel>(conn)?;
-
-                    Ok((access_list, rules))
-                })
+                diesel::delete(access_lists.filter(id.eq(list_id)))
+                    .execute(conn)
+                    .map(|_| ())
             })
             .await
             .map_err(RepositoryError::Interact)?
             .map_err(RepositoryError::Query)
     }
 
-    pub async fn update(
+    pub async fn update_full(
         list_id: i32,
-        model: UpdateAccessListModel,
+        model: Option<UpdateAccessListModel>,
+        rules: Option<Vec<NewAccessListRuleModel>>,
         database: &Database,
     ) -> Result<(AccessListModel, Vec<AccessListRuleModel>), RepositoryError> {
         let connection = database
@@ -197,36 +146,40 @@ impl AccessListsRepository {
                 use diesel::prelude::*;
 
                 conn.transaction(|conn| {
-                    let access_list = diesel::update(access_lists.filter(id.eq(list_id)))
-                        .set(&model)
-                        .get_result::<AccessListModel>(conn)?;
+                    let access_list = if let Some(model) = model {
+                        diesel::update(access_lists.filter(id.eq(list_id)))
+                            .set(&model)
+                            .get_result::<AccessListModel>(conn)?
+                    } else {
+                        access_lists
+                            .filter(id.eq(list_id))
+                            .first::<AccessListModel>(conn)?
+                    };
 
-                    let rules = access_list_rules
-                        .filter(access_list_id.eq(list_id))
-                        .order(sort_order.asc())
-                        .load::<AccessListRuleModel>(conn)?;
+                    let rules = if let Some(rules) = rules {
+                        diesel::delete(access_list_rules.filter(access_list_id.eq(list_id)))
+                            .execute(conn)?;
+
+                        let rules: Vec<NewAccessListRuleModel> = rules
+                            .into_iter()
+                            .map(|r| NewAccessListRuleModel {
+                                access_list_id: list_id,
+                                ..r
+                            })
+                            .collect();
+
+                        diesel::insert_into(access_list_rules)
+                            .values(&rules)
+                            .get_results::<AccessListRuleModel>(conn)?
+                    } else {
+                        access_list_rules
+                            .filter(access_list_id.eq(list_id))
+                            .order(sort_order.asc())
+                            .load::<AccessListRuleModel>(conn)?
+                    };
 
                     Ok((access_list, rules))
                 })
-            })
-            .await
-            .map_err(RepositoryError::Interact)?
-            .map_err(RepositoryError::Query)
-    }
-
-    pub async fn delete(list_id: i32, database: &Database) -> Result<(), RepositoryError> {
-        let connection = database
-            .connection()
-            .await
-            .map_err(RepositoryError::Connection)?;
-
-        connection
-            .interact(move |conn| {
-                use crate::database::schema::access_lists::dsl::{access_lists, id};
-                use diesel::prelude::*;
-                diesel::delete(access_lists.filter(id.eq(list_id)))
-                    .execute(conn)
-                    .map(|_| ())
             })
             .await
             .map_err(RepositoryError::Interact)?

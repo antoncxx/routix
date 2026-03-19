@@ -26,12 +26,6 @@ pub struct UpdateAccessListRequest {
     pub rules: Option<Vec<UpdateAccessListRuleRequest>>,
 }
 
-impl UpdateAccessListRequest {
-    pub fn has_changes(&self) -> bool {
-        self.name.is_some()
-    }
-}
-
 pub async fn update(
     State(ctx): State<Context>,
     Path(id): Path<i32>,
@@ -47,25 +41,12 @@ pub async fn update(
         return StatusCode::UNPROCESSABLE_ENTITY.into_response();
     }
 
-    let _ = if body.has_changes() {
-        let model = UpdateAccessListModel { name: body.name };
+    let model = body
+        .name
+        .map(|name| UpdateAccessListModel { name: Some(name) });
 
-        match AccessListsRepository::update(id, model, &ctx.database).await {
-            Ok(model) => model,
-            Err(e) if e.is_unique_violation() => return StatusCode::CONFLICT.into_response(),
-            Err(e) if e.is_not_found() => return StatusCode::NOT_FOUND.into_response(),
-            Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-        }
-    } else {
-        match AccessListsRepository::fetch(id, &ctx.database).await {
-            Ok(model) => model,
-            Err(e) if e.is_not_found() => return StatusCode::NOT_FOUND.into_response(),
-            Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-        }
-    };
-
-    let (_1, _2) = if let Some(rules) = body.rules {
-        let rules = rules
+    let rules = body.rules.map(|rules| {
+        rules
             .into_iter()
             .enumerate()
             .map(|(i, r)| NewAccessListRuleModel {
@@ -74,21 +55,13 @@ pub async fn update(
                 address: r.address,
                 sort_order: i as i32,
             })
-            .collect();
+            .collect()
+    });
 
-        match AccessListsRepository::set_rules(id, rules, &ctx.database).await {
-            Ok((access_list, rules)) => (access_list, rules),
-            Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-        }
-    } else {
-        match AccessListsRepository::fetch(id, &ctx.database).await {
-            Ok((access_list, rules)) => (access_list, rules),
-            Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-        }
-    };
-
-    StatusCode::OK.into_response()
+    match AccessListsRepository::update_full(id, model, rules, &ctx.database).await {
+        Ok(_) => StatusCode::OK.into_response(),
+        Err(e) if e.is_not_found() => StatusCode::NOT_FOUND.into_response(),
+        Err(e) if e.is_unique_violation() => StatusCode::CONFLICT.into_response(),
+        Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    }
 }
-
-// @TODO: refactor
-// idiocracy in from of my eyes
