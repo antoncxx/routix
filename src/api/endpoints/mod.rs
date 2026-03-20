@@ -2,6 +2,7 @@ use axum::{Router, routing::post};
 
 use crate::context::Context;
 
+mod access_list;
 mod certificate;
 mod login;
 mod proxy_host;
@@ -17,5 +18,6 @@ pub fn build_router(context: Context) -> Router {
         .nest("/certificate", certificate::router(context.clone()))
         .nest("/proxy_host", proxy_host::router(context.clone()))
         .nest("/upstream", upstream::router(context.clone()))
+        .nest("/access_list", access_list::router(context.clone()))
         .with_state(context)
 }

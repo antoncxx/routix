@@ -33,3 +33,4 @@ rcgen = "0.14"
 reqwest = { version = "0.13", features = ["json", "query"] }
 serde_json = "1"
 anyhow = "1.0"
+ipnet = "2"

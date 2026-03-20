@@ -14,6 +14,9 @@ pub enum UserScope {
 
     CertificatesRead,
     CertificatesWrite,
+
+    AccessListsRead,
+    AccessListsWrite,
 }
 
 impl fmt::Display for UserScope {
@@ -27,6 +30,9 @@ impl fmt::Display for UserScope {
 
             Self::CertificatesRead => "certificates_read",
             Self::CertificatesWrite => "certificates_write",
+
+            Self::AccessListsRead => "access_lists_read",
+            Self::AccessListsWrite => "access_lists_write",
         };
         write!(f, "{s}")
     }
@@ -45,6 +51,9 @@ impl FromStr for UserScope {
 
             "certificates_read" => Ok(Self::CertificatesRead),
             "certificates_write" => Ok(Self::CertificatesWrite),
+
+            "access_lists_read" => Ok(Self::AccessListsRead),
+            "access_lists_write" => Ok(Self::AccessListsWrite),
 
             other => Err(Error::new(
                 ErrorKind::InvalidInput,

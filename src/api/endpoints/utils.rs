@@ -1,5 +1,7 @@
+use ipnet::IpNet;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::net::IpAddr;
 use std::sync::LazyLock;
 use validator::Validate;
 
@@ -23,6 +25,22 @@ pub(crate) fn validate_forward_schema(schema: &str) -> Result<(), validator::Val
     }
 }
 
+pub(crate) fn validate_access_list_action(action: &str) -> Result<(), validator::ValidationError> {
+    match action {
+        "allow" | "deny" => Ok(()),
+        _ => Err(validator::ValidationError::new("invalid_action")),
+    }
+}
+
+pub(crate) fn validate_address(address: &str) -> Result<(), validator::ValidationError> {
+    let valid = address.parse::<IpAddr>().is_ok() || address.parse::<IpNet>().is_ok();
+
+    if valid {
+        Ok(())
+    } else {
+        Err(validator::ValidationError::new("invalid_address"))
+    }
+}
 #[derive(Serialize)]
 pub(crate) struct PaginatedResponse<T> {
     pub data: Vec<T>,

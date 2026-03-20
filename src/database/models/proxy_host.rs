@@ -9,6 +9,7 @@ pub struct ProxyHostModel {
     pub id: i32,
     pub domain: String,
     pub certificate_name: Option<String>,
+    pub access_list_id: Option<i32>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -18,6 +19,7 @@ pub struct ProxyHostModel {
 pub struct NewProxyHostModel {
     pub domain: String,
     pub certificate_name: Option<String>,
+    pub access_list_id: Option<i32>,
 }
 
 #[derive(Debug, AsChangeset, Serialize, Deserialize, Default)]
@@ -25,4 +27,13 @@ pub struct NewProxyHostModel {
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct UpdateProxyHostModel {
     pub domain: Option<String>,
+    #[allow(clippy::option_option)]
+    pub certificate_name: Option<Option<String>>,
+    #[allow(clippy::option_option)]
+    pub access_list_id: Option<Option<i32>>,
+}
+
+pub struct UpdateProxyHost {
+    pub model: UpdateProxyHostModel,
+    pub upstream_ids: Option<Vec<i32>>,
 }

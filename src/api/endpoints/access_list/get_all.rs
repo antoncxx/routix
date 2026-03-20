@@ -6,16 +6,15 @@ use serde::Serialize;
 use validator::Validate;
 
 use crate::api::endpoints::utils::{PaginatedResponse, PaginationQuery};
-use crate::database::models::{ProxyHostModel, UpstreamModel};
-use crate::database::repos::ProxyHostUpstreamsRepository;
-use crate::{context::Context, database::repos::ProxyHostsRepository};
+use crate::context::Context;
+use crate::database::models::{AccessListModel, AccessListRuleModel};
+use crate::database::repos::AccessListsRepository;
 
 #[derive(Serialize)]
-pub struct ProxyHostResponse {
+pub struct AccessListResponse {
     #[serde(flatten)]
-    pub host: ProxyHostModel,
-    pub upstreams: Vec<UpstreamModel>,
-    pub access_list: Option<String>,
+    pub access_list: AccessListModel,
+    pub rules: Vec<AccessListRuleModel>,
 }
 
 pub async fn fetch_all(
@@ -26,27 +25,19 @@ pub async fn fetch_all(
         return StatusCode::UNPROCESSABLE_ENTITY.into_response();
     }
 
-    let Ok(total) = ProxyHostsRepository::count(&ctx.database).await else {
+    let Ok(total) = AccessListsRepository::count(&ctx.database).await else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
 
-    let Ok(data) = ProxyHostUpstreamsRepository::get_all_with_upstreams(
-        &ctx.database,
-        pagination.page,
-        pagination.per_page,
-    )
-    .await
+    let Ok(data) =
+        AccessListsRepository::fetch_all(&ctx.database, pagination.page, pagination.per_page).await
     else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
 
     let response_items = data
         .into_iter()
-        .map(|(host, upstreams, access_list_data)| ProxyHostResponse {
-            host,
-            upstreams,
-            access_list: access_list_data.map(|data| data.0.name),
-        })
+        .map(|(access_list, rules)| AccessListResponse { access_list, rules })
         .collect::<Vec<_>>();
 
     Json(PaginatedResponse {
