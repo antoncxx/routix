@@ -49,19 +49,30 @@ pub async fn update(
         rules
             .into_iter()
             .enumerate()
-            .map(|(i, r)| NewAccessListRuleModel {
-                access_list_id: id,
-                action: r.action,
-                address: r.address,
-                sort_order: i as i32,
+            .map(|(i, r)| {
+                Ok(NewAccessListRuleModel {
+                    access_list_id: id,
+                    action: r.action,
+                    address: r.address,
+                    sort_order: i32::try_from(i).map_err(|_| StatusCode::UNPROCESSABLE_ENTITY)?,
+                })
             })
-            .collect()
+            .collect::<Result<Vec<_>, StatusCode>>()
     });
 
-    match AccessListsRepository::update_full(id, model, rules, &ctx.database).await {
-        Ok(_) => StatusCode::OK.into_response(),
-        Err(e) if e.is_not_found() => StatusCode::NOT_FOUND.into_response(),
-        Err(e) if e.is_unique_violation() => StatusCode::CONFLICT.into_response(),
-        Err(_) => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-    }
+    let rules = match rules.transpose() {
+        Ok(rules) => rules,
+        Err(status) => return status.into_response(),
+    };
+
+    let data = match AccessListsRepository::update_full(id, model, rules, &ctx.database).await {
+        Ok(data) => data,
+        Err(e) if e.is_not_found() => return StatusCode::NOT_FOUND.into_response(),
+        Err(e) if e.is_unique_violation() => return StatusCode::CONFLICT.into_response(),
+        Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+    };
+
+    let () = ctx.hosts_manager.update_access_list(&data.0, &data.1).await;
+
+    StatusCode::OK.into_response()
 }

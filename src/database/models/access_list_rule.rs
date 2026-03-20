@@ -1,9 +1,11 @@
+use super::AccessListModel;
 use chrono::{DateTime, Utc};
 use diesel::prelude::*;
-use super::AccessListModel;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Queryable, Selectable, Identifiable, Associations, Serialize, Deserialize)]
+#[derive(
+    Debug, Queryable, Selectable, Identifiable, Associations, Serialize, Deserialize, Clone,
+)]
 #[diesel(table_name = crate::database::schema::access_list_rules)]
 #[diesel(belongs_to(AccessListModel, foreign_key = access_list_id))]
 #[diesel(check_for_backend(diesel::pg::Pg))]
@@ -16,7 +18,7 @@ pub struct AccessListRuleModel {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Insertable, Serialize, Deserialize, Default)]
+#[derive(Debug, Insertable, Serialize, Deserialize, Default, Clone)]
 #[diesel(table_name = crate::database::schema::access_list_rules)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct NewAccessListRuleModel {

@@ -41,17 +41,23 @@ pub async fn create(
 
     let model = NewAccessListModel { name: body.name };
 
-    let rules: Vec<NewAccessListRuleModel> = body
+    let rules: Vec<NewAccessListRuleModel> = match body
         .rules
         .into_iter()
         .enumerate()
-        .map(|(i, r)| NewAccessListRuleModel {
-            access_list_id: 0, // stamped in the repository
-            action: r.action,
-            address: r.address,
-            sort_order: i as i32,
+        .map(|(i, r)| {
+            Ok(NewAccessListRuleModel {
+                access_list_id: 0,
+                action: r.action,
+                address: r.address,
+                sort_order: i32::try_from(i).map_err(|_| StatusCode::UNPROCESSABLE_ENTITY)?,
+            })
         })
-        .collect();
+        .collect::<Result<Vec<_>, StatusCode>>()
+    {
+        Ok(rules) => rules,
+        Err(status) => return status.into_response(),
+    };
 
     match AccessListsRepository::create(model, rules, &ctx.database).await {
         Ok(result) => Json(result).into_response(),

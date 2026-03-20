@@ -15,6 +15,7 @@ pub struct ProxyHostResponse {
     #[serde(flatten)]
     pub host: ProxyHostModel,
     pub upstreams: Vec<UpstreamModel>,
+    pub access_list: Option<String>,
 }
 
 pub async fn fetch_all(
@@ -41,7 +42,11 @@ pub async fn fetch_all(
 
     let response_items = data
         .into_iter()
-        .map(|(host, upstreams)| ProxyHostResponse { host, upstreams })
+        .map(|(host, upstreams, access_list_data)| ProxyHostResponse {
+            host,
+            upstreams,
+            access_list: access_list_data.map(|data| data.0.name),
+        })
         .collect::<Vec<_>>();
 
     Json(PaginatedResponse {

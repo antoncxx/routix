@@ -2,6 +2,7 @@ use crate::context::Context;
 use pingora::{listeners::tls::TlsSettings, prelude::*};
 use proxy_impl::RoutixProxy;
 
+mod accees_list;
 mod hosts_manager;
 mod proxy_host;
 mod proxy_impl;

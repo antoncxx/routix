@@ -1,4 +1,7 @@
-use crate::{database::models::UpstreamModel, proxy::ProxyHost};
+use crate::{
+    database::models::{AccessListModel, AccessListRuleModel, UpstreamModel},
+    proxy::ProxyHost,
+};
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
 
@@ -38,6 +41,18 @@ impl HostsManager {
 
         for (_, proxy_host) in hosts.iter_mut() {
             let _ = Arc::make_mut(proxy_host).update_upstream(upstream);
+        }
+    }
+
+    pub async fn update_access_list(
+        &self,
+        access_list_model: &AccessListModel,
+        rules_models: &[AccessListRuleModel],
+    ) {
+        let mut hosts = self.hosts.write().await;
+
+        for (_, proxy_host) in hosts.iter_mut() {
+            let _ = Arc::make_mut(proxy_host).update_access_list(access_list_model, rules_models);
         }
     }
 }

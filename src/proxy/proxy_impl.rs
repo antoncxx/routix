@@ -1,3 +1,4 @@
+use std::net::IpAddr;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -23,28 +24,54 @@ impl ProxyHttp for RoutixProxy {
         None
     }
 
-    async fn upstream_peer(
+    async fn request_filter(
         &self,
         session: &mut Session,
         ctx: &mut Self::CTX,
-    ) -> Result<Box<HttpPeer>> {
+    ) -> pingora::Result<bool> {
         let proxy_host = self
             .resolve_host(session)
             .await
             .ok_or_else(|| Error::new(ErrorType::HTTPStatus(502)))?;
 
-        let index = self.counter.fetch_add(1, Ordering::Relaxed);
+        let client_ip: IpAddr = session
+            .client_addr()
+            .and_then(|a| a.as_inet())
+            .map(std::net::SocketAddr::ip)
+            .ok_or_else(|| Error::new(ErrorType::InternalError))?;
 
-        let upstream = proxy_host
-            .select_upstream(index)
-            .ok_or_else(|| Error::new(ErrorType::HTTPStatus(502)))?;
-
-        let peer = upstream.to_peer();
+        if !proxy_host.is_allowed(&client_ip) {
+            let mut resp = ResponseHeader::build(403, None)?;
+            resp.insert_header("content-length", "0")?;
+            session.write_response_header(Box::new(resp), true).await?;
+            return Ok(true);
+        }
 
         *ctx = Some(RequestContext {
             proxy_host,
-            upstream_index: index,
+            upstream_index: 0, // set properly in upstream_peer
         });
+
+        Ok(false)
+    }
+
+    async fn upstream_peer(
+        &self,
+        _session: &mut Session,
+        ctx: &mut Self::CTX,
+    ) -> Result<Box<HttpPeer>> {
+        let ctx = ctx
+            .as_mut()
+            .ok_or_else(|| Error::new(ErrorType::HTTPStatus(502)))?;
+
+        let index = self.counter.fetch_add(1, Ordering::Relaxed);
+        ctx.upstream_index = index;
+
+        let peer = ctx
+            .proxy_host
+            .select_upstream(index)
+            .ok_or_else(|| Error::new(ErrorType::HTTPStatus(502)))?
+            .to_peer();
 
         Ok(peer)
     }
@@ -55,11 +82,13 @@ impl ProxyHttp for RoutixProxy {
         upstream_request: &mut RequestHeader,
         ctx: &mut Self::CTX,
     ) -> Result<()> {
-        let Some(req_ctx) = ctx else { return Ok(()) };
+        let ctx = ctx
+            .as_ref()
+            .ok_or_else(|| Error::new(ErrorType::HTTPStatus(502)))?;
 
-        let upstream = req_ctx
+        let upstream = ctx
             .proxy_host
-            .select_upstream(req_ctx.upstream_index)
+            .select_upstream(ctx.upstream_index)
             .ok_or_else(|| Error::new(ErrorType::HTTPStatus(502)))?;
 
         upstream_request.insert_header("host", upstream.host_header())?;

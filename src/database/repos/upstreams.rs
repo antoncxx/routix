@@ -37,26 +37,6 @@ impl UpstreamsRepository {
             .map_err(RepositoryError::Query)
     }
 
-    pub async fn get_by_ids(
-        ids: Vec<i32>,
-        database: &Database,
-    ) -> Result<Vec<UpstreamModel>, RepositoryError> {
-        let connection = database
-            .connection()
-            .await
-            .map_err(RepositoryError::Connection)?;
-
-        connection
-            .interact(move |conn| {
-                use crate::database::schema::upstreams::dsl::{id, upstreams};
-                use diesel::prelude::*;
-                upstreams.filter(id.eq_any(ids)).load::<UpstreamModel>(conn)
-            })
-            .await
-            .map_err(RepositoryError::Interact)?
-            .map_err(RepositoryError::Query)
-    }
-
     pub async fn create(
         model: NewUpstreamModel,
         database: &Database,

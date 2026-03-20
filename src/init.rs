@@ -121,9 +121,9 @@ async fn load_proxy_hosts(context: &Context) -> Result<(), Box<dyn Error>> {
 
         let total = ProxyHostsRepository::count(&context.database).await?;
 
-        for (proxy_host_model, upstream_models) in data {
+        for (proxy_host_model, upstream_models, access_list_data) in data {
             let proxy_domain = proxy_host_model.domain.clone();
-            match ProxyHost::new(proxy_host_model, upstream_models) {
+            match ProxyHost::new(proxy_host_model, upstream_models, access_list_data) {
                 Ok(proxy_host) => {
                     context.hosts_manager.add(proxy_host).await;
                 }

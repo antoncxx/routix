@@ -5,12 +5,9 @@ use axum::response::IntoResponse;
 use serde::{Deserialize, Deserializer};
 use validator::Validate;
 
-use crate::database::models::UpdateProxyHostModel;
+use crate::database::models::{UpdateProxyHost, UpdateProxyHostModel};
 use crate::proxy::ProxyHost;
-use crate::{
-    context::Context,
-    database::repos::{ProxyHostUpstreamsRepository, ProxyHostsRepository, UpstreamsRepository},
-};
+use crate::{context::Context, database::repos::ProxyHostsRepository};
 
 use crate::api::endpoints::utils::DOMAIN_REGEX;
 
@@ -45,14 +42,15 @@ where
     Ok(Some(Option::deserialize(deserializer)?))
 }
 
-impl UpdateProxyHostRequest {
-    pub fn has_changes(&self) -> bool {
-        self.domain.is_some()
-    }
-
-    pub fn to_model(&self) -> UpdateProxyHostModel {
-        UpdateProxyHostModel {
-            domain: self.domain.clone(),
+impl From<UpdateProxyHostRequest> for UpdateProxyHost {
+    fn from(value: UpdateProxyHostRequest) -> Self {
+        UpdateProxyHost {
+            model: UpdateProxyHostModel {
+                domain: value.domain,
+                certificate_name: value.certificate_name,
+                access_list_id: value.access_list_id,
+            },
+            upstream_ids: value.upstream_ids,
         }
     }
 }
@@ -72,62 +70,23 @@ pub async fn update(
         return StatusCode::UNPROCESSABLE_ENTITY.into_response();
     }
 
-    let cert_name = body.certificate_name.clone();
-    let access_list_id = body.access_list_id;
+    let model = body.into();
 
-    let host_model = if body.has_changes() {
-        match ProxyHostsRepository::update(id, body.to_model(), &ctx.database).await {
-            Ok(model) => model,
+    let (host_model, upstream_models, access_list) =
+        match ProxyHostsRepository::update_full(id, model, &ctx.database).await {
+            Ok(result) => result,
             Err(e) if e.is_unique_violation() => return StatusCode::CONFLICT.into_response(),
             Err(e) if e.is_foreign_key_violation() => {
                 return StatusCode::BAD_REQUEST.into_response();
             }
             Err(e) if e.is_not_found() => return StatusCode::NOT_FOUND.into_response(),
             Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-        }
-    } else {
-        match ProxyHostsRepository::fetch(id, &ctx.database).await {
-            Ok(model) => model,
-            Err(e) if e.is_not_found() => return StatusCode::NOT_FOUND.into_response(),
-            Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-        }
-    };
-
-    let host_model = if let Some(cert) = cert_name {
-        match ProxyHostsRepository::update_certificate(id, cert, &ctx.database).await {
-            Ok(model) => model,
-            Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-        }
-    } else {
-        host_model
-    };
-
-    let host_model = if let Some(access_list) = access_list_id {
-        match ProxyHostsRepository::update_access_list(id, access_list, &ctx.database).await {
-            Ok(model) => model,
-            Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
-        }
-    } else {
-        host_model
-    };
-
-    let upstream_ids =
-        match ProxyHostUpstreamsRepository::get_by_proxy_host(id, &ctx.database).await {
-            Ok(upstreams) => upstreams.into_iter().map(|u| u.id).collect(),
-            Err(_) => return StatusCode::INTERNAL_SERVER_ERROR.into_response(),
         };
 
-    let Ok(upstream_models) = UpstreamsRepository::get_by_ids(upstream_ids, &ctx.database).await
-    else {
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-    };
-
-    let Ok(proxy_host) = ProxyHost::new(host_model, upstream_models) else {
+    let Ok(proxy_host) = ProxyHost::new(host_model, upstream_models, access_list) else {
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     };
 
     ctx.hosts_manager.update(proxy_host).await;
     StatusCode::OK.into_response()
 }
-
-// @TODO: Add fetch list and rules and add them to ProxyHost model

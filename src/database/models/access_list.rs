@@ -2,7 +2,7 @@ use chrono::{DateTime, Utc};
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Queryable, Selectable, Identifiable, Serialize, Deserialize)]
+#[derive(Debug, Queryable, Selectable, Identifiable, Serialize, Deserialize, Clone)]
 #[diesel(table_name = crate::database::schema::access_lists)]
 #[diesel(check_for_backend(diesel::pg::Pg))]
 pub struct AccessListModel {
